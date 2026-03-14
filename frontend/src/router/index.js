@@ -1,11 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import LoginPage from '@/views/Login.vue';   // 导入 Login 页面
-import RegisterPage from '@/views/Register.vue'; // 导入 Register 页面
+import LoginPage from '@/views/Login.vue';
+import RegisterPage from '@/views/Register.vue';
+import StudyStats from '@/views/StudyStats.vue';
+import KnowledgeSummary from '@/views/KnowledgeSummary.vue';
+import HomeworkManagement from '@/views/HomeworkManagement.vue';
 
 const routes = [
-  { path: '/', redirect: '/login' },  // 设置默认路由为 Login 页面
+  { path: '/', redirect: '/login' },
   { path: '/login', component: LoginPage },
-  { path: '/register', component: RegisterPage }
+  { path: '/register', component: RegisterPage },
+  { path: '/study-stats', component: StudyStats },
+  { path: '/knowledge-summary', component: KnowledgeSummary },
+  { path: '/homework', component: HomeworkManagement }
 ];
 
 const router = createRouter({

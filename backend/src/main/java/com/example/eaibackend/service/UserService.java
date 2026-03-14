@@ -32,8 +32,17 @@ public class UserService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
+        // 先检查是否是BCrypt加密的密码
+        if (user.getPassword().length() >= 60 && user.getPassword().startsWith("$2a$")) {
+            // BCrypt加密的密码
+            if (!passwordEncoder.matches(password, user.getPassword())) {
+                throw new RuntimeException("Invalid credentials");
+            }
+        } else {
+            // 明文密码（兼容旧数据）
+            if (!password.equals(user.getPassword())) {
+                throw new RuntimeException("Invalid credentials");
+            }
         }
 
         return user;

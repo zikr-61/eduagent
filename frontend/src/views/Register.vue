@@ -2,7 +2,7 @@
   <div class="register-container">
     <el-card class="register-card">
       <h2 class="title">Register for Education AI Assistant</h2>
-      <el-form @submit.prevent="register" class="register-form" :rules="rules" ref="registerForm">
+      <el-form @submit.prevent="register" class="register-form" :model="form" :rules="rules" ref="registerForm">
         <el-form-item label="Username" prop="username">
           <el-input v-model="form.username" placeholder="Choose a username" />
         </el-form-item>
@@ -30,7 +30,7 @@
 import { register } from '@/api';
 
 export default {
-  name: 'RegisterPage',  // 修改为多单词组件名
+  name: 'RegisterPage',
   data() {
     return {
       form: {

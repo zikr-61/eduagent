@@ -1,9 +1,9 @@
 <template>
   <div class="login-container">
     <el-card class="login-card">
-      <h2 class="title">AI 教育助手</h2> <!-- 添加标题 -->
-      <p class="sub-title">没有账号？<router-link to="/register">去注册</router-link></p> <!-- 添加提示并跳转到注册页面 -->
-      <el-form @submit.prevent="login" class="login-form" :rules="rules" ref="loginForm">
+      <h2 class="title">AI 教育助手</h2>
+      <p class="sub-title">没有账号？<router-link to="/register">去注册</router-link></p>
+      <el-form @submit.prevent="login" class="login-form" :model="form" :rules="rules" ref="loginForm">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" />
         </el-form-item>
@@ -28,7 +28,7 @@
 import { login } from '@/api';
 
 export default {
-  name: 'LoginPage',  // 组件名称
+  name: 'LoginPage',
   data() {
     return {
       form: {
@@ -53,10 +53,15 @@ export default {
         if (valid) {
           try {
             const response = await login(this.form.username, this.form.password);
-            alert('登录成功！');
-            console.log('登录成功，用户信息：', response.data);
+            if (response.data && response.data.id) {
+              localStorage.setItem('userInfo', JSON.stringify(response.data));
+              this.$router.push('/study-stats');
+            } else {
+              this.$alert('登录成功！');
+              console.log('登录成功，用户信息：', response.data);
+            }
           } catch (error) {
-            alert('登录失败：' + (error.response?.data?.error || '未知错误'));
+            this.$alert('登录失败：' + (error.response?.data?.error || '未知错误'));
           }
         }
       });

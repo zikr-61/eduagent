@@ -1,0 +1,33 @@
+package com.example.eaibackend.model;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "study_records")
+@Data
+public class StudyRecord {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "user_id", nullable = false)
+    private Integer userId;
+
+    @Column(name = "duration_minutes", nullable = false)
+    private Integer durationMinutes;
+
+    @Column(name = "record_date", nullable = false)
+    private LocalDate recordDate;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
+}
