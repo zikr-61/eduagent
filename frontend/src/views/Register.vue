@@ -2,14 +2,14 @@
   <div class="register-container">
     <el-card class="register-card">
       <h2 class="title">Register for Education AI Assistant</h2>
-      <el-form @submit.prevent="register" class="register-form">
-        <el-form-item label="Username">
-          <el-input v-model="username" placeholder="Choose a username" />
+      <el-form @submit.prevent="register" class="register-form" :rules="rules" ref="registerForm">
+        <el-form-item label="Username" prop="username">
+          <el-input v-model="form.username" placeholder="Choose a username" />
         </el-form-item>
 
-        <el-form-item label="Password">
+        <el-form-item label="Password" prop="password">
           <el-input
-            v-model="password"
+            v-model="form.password"
             type="password"
             placeholder="Choose a password"
           />
@@ -27,17 +27,41 @@
 </template>
 
 <script>
+import { register } from '@/api';
+
 export default {
   name: 'RegisterPage',  // 修改为多单词组件名
   data() {
     return {
-      username: '',
-      password: ''
+      form: {
+        username: '',
+        password: ''
+      },
+      rules: {
+        username: [
+          { required: true, message: 'Please enter username', trigger: 'blur' },
+          { min: 3, max: 20, message: 'Username length between 3-20 characters', trigger: 'blur' }
+        ],
+        password: [
+          { required: true, message: 'Please enter password', trigger: 'blur' },
+          { min: 6, message: 'Password length at least 6 characters', trigger: 'blur' }
+        ]
+      }
     };
   },
   methods: {
-    register() {
-      alert(`Username: ${this.username}, Password: ${this.password}`);
+    async register() {
+      this.$refs.registerForm.validate(async (valid) => {
+        if (valid) {
+          try {
+            await register(this.form.username, this.form.password);
+            alert('注册成功！');
+            this.$router.push('/login');
+          } catch (error) {
+            alert('注册失败：' + (error.response?.data?.error || '未知错误'));
+          }
+        }
+      });
     }
   }
 };

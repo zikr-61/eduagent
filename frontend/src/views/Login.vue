@@ -3,14 +3,14 @@
     <el-card class="login-card">
       <h2 class="title">AI 教育助手</h2> <!-- 添加标题 -->
       <p class="sub-title">没有账号？<router-link to="/register">去注册</router-link></p> <!-- 添加提示并跳转到注册页面 -->
-      <el-form @submit.prevent="login" class="login-form">
-        <el-form-item label="用户名">
-          <el-input v-model="username" placeholder="请输入用户名" />
+      <el-form @submit.prevent="login" class="login-form" :rules="rules" ref="loginForm">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="form.username" placeholder="请输入用户名" />
         </el-form-item>
 
-        <el-form-item label="密码">
+        <el-form-item label="密码" prop="password">
           <el-input
-            v-model="password"
+            v-model="form.password"
             type="password"
             placeholder="请输入密码"
           />
@@ -25,17 +25,41 @@
 </template>
 
 <script>
+import { login } from '@/api';
+
 export default {
   name: 'LoginPage',  // 组件名称
   data() {
     return {
-      username: '',
-      password: ''
+      form: {
+        username: '',
+        password: ''
+      },
+      rules: {
+        username: [
+          { required: true, message: '请输入用户名', trigger: 'blur' },
+          { min: 3, max: 20, message: '用户名长度在3-20个字符之间', trigger: 'blur' }
+        ],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { min: 6, message: '密码长度至少6个字符', trigger: 'blur' }
+        ]
+      }
     };
   },
   methods: {
-    login() {
-      alert(`用户名: ${this.username}, 密码: ${this.password}`);
+    async login() {
+      this.$refs.loginForm.validate(async (valid) => {
+        if (valid) {
+          try {
+            const response = await login(this.form.username, this.form.password);
+            alert('登录成功！');
+            console.log('登录成功，用户信息：', response.data);
+          } catch (error) {
+            alert('登录失败：' + (error.response?.data?.error || '未知错误'));
+          }
+        }
+      });
     }
   }
 };

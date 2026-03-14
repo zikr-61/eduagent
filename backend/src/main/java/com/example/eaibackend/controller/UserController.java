@@ -20,8 +20,7 @@ public class UserController {
 
     // 用户登录接口
     @PostMapping("/login")
-    public String login(@RequestParam String username, @RequestParam String password) {
-        userService.loginUser(username, password);
-        return "Login successful!";
+    public com.example.eaibackend.model.User login(@RequestParam String username, @RequestParam String password) {
+        return userService.loginUser(username, password);
     }
 }
