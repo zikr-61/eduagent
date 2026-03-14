@@ -38,6 +38,12 @@
           <el-divider v-if="result" />
 
           <div v-if="result" class="result-content">
+            <ExecutionVisualizer 
+              v-if="executionSteps.length > 0"
+              :steps="executionSteps" 
+              :total-duration="totalDuration" 
+            />
+            
             <el-card shadow="hover">
               <template #header>
                 <span>生成的摘要</span>
@@ -107,6 +113,7 @@
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { getKnowledgePoints, generateSummaryAndQuestions, getQuestions } from '@/api';
+import ExecutionVisualizer from '@/components/ExecutionVisualizer.vue';
 
 const userId = ref(1);
 const activeTab = ref('generate');
@@ -115,6 +122,8 @@ const result = ref(null);
 const knowledgePoints = ref([]);
 const detailDialogVisible = ref(false);
 const currentDetail = ref(null);
+const executionSteps = ref([]);
+const totalDuration = ref('');
 
 const form = ref({
   title: '',
@@ -129,6 +138,9 @@ const generateSummary = async () => {
   }
 
   loading.value = true;
+  executionSteps.value = [];
+  totalDuration.value = '';
+  
   try {
     const res = await generateSummaryAndQuestions(
       userId.value,
@@ -137,6 +149,14 @@ const generateSummary = async () => {
       form.value.fileName
     );
     result.value = res.data.data;
+    
+    if (res.data.data.executionSteps) {
+      executionSteps.value = res.data.data.executionSteps;
+    }
+    if (res.data.data.totalDuration) {
+      totalDuration.value = res.data.data.totalDuration;
+    }
+    
     ElMessage.success('生成成功');
     loadHistory();
   } catch (error) {

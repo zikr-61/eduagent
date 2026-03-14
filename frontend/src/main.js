@@ -1,19 +1,45 @@
 import { createApp } from 'vue';
 import App from './App.vue';
-import router from './router'; // 导入路由配置
-import ElementPlus from 'element-plus'; // 引入 Element Plus
-import 'element-plus/dist/index.css'; // 引入 Element Plus 样式
+import router from './router';
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css';
 
-// 全局处理 ResizeObserver 错误
-if (typeof window !== 'undefined') {
-  window.addEventListener('error', (e) => {
-    if (e.message.includes('ResizeObserver loop completed with undelivered notifications')) {
-      e.preventDefault();
-    }
-  });
-}
+const debounce = (fn, delay) => {
+  let timer = null;
+  return function() {
+    const context = this;
+    const args = arguments;
+    clearTimeout(timer);
+    timer = setTimeout(function() {
+      fn.apply(context, args);
+    }, delay);
+  };
+};
+
+const _ResizeObserver = window.ResizeObserver;
+window.ResizeObserver = class ResizeObserver extends _ResizeObserver {
+  constructor(callback) {
+    callback = debounce(callback, 16);
+    super(callback);
+  }
+};
+
+const errorHandler = (event) => {
+  if (event.message && event.message.includes('ResizeObserver')) {
+    event.preventDefault();
+    event.stopPropagation();
+    return false;
+  }
+};
+
+window.addEventListener('error', errorHandler, true);
+window.addEventListener('unhandledrejection', (event) => {
+  if (event.reason && event.reason.message && event.reason.message.includes('ResizeObserver')) {
+    event.preventDefault();
+  }
+}, true);
 
 createApp(App)
-  .use(router)  // 使用路由
-  .use(ElementPlus)  // 使用 Element Plus
+  .use(router)
+  .use(ElementPlus)
   .mount('#app');

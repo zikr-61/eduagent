@@ -80,9 +80,70 @@ public class KnowledgePointService {
 
     @Transactional
     public Map<String, Object> generateSummaryAndQuestions(Integer userId, String title, String content, String fileName) {
+        List<Map<String, Object>> executionSteps = new ArrayList<>();
+        
+        Map<String, Object> step1 = new HashMap<>();
+        step1.put("stepId", 1);
+        step1.put("stepName", "任务分解");
+        step1.put("description", "解析用户输入，分解为子任务");
+        step1.put("status", "completed");
+        step1.put("details", Map.of(
+            "input", Map.of("title", title, "contentLength", content != null ? content.length() : 0),
+            "subTasks", List.of("生成知识点摘要", "生成选择题习题")
+        ));
+        step1.put("timestamp", System.currentTimeMillis());
+        executionSteps.add(step1);
+        
+        Map<String, Object> step2 = new HashMap<>();
+        step2.put("stepId", 2);
+        step2.put("stepName", "工具调用 - 摘要生成");
+        step2.put("description", "调用AI模型生成知识点摘要");
+        step2.put("status", "running");
+        step2.put("timestamp", System.currentTimeMillis());
+        executionSteps.add(step2);
+        
+        long summaryStartTime = System.currentTimeMillis();
         String summary = generateSummaryWithAI(content);
+        long summaryDuration = System.currentTimeMillis() - summaryStartTime;
+        
+        step2.put("status", "completed");
+        step2.put("duration", summaryDuration + "ms");
+        step2.put("details", Map.of(
+            "tool", "Qwen AI API",
+            "model", qwenModel,
+            "outputLength", summary != null ? summary.length() : 0,
+            "result", summary
+        ));
+        
+        Map<String, Object> step3 = new HashMap<>();
+        step3.put("stepId", 3);
+        step3.put("stepName", "工具调用 - 习题生成");
+        step3.put("description", "调用AI模型生成选择题");
+        step3.put("status", "running");
+        step3.put("timestamp", System.currentTimeMillis());
+        executionSteps.add(step3);
+        
+        long questionsStartTime = System.currentTimeMillis();
         List<Map<String, String>> questions = generateQuestionsWithAI(content, 5);
-
+        long questionsDuration = System.currentTimeMillis() - questionsStartTime;
+        
+        step3.put("status", "completed");
+        step3.put("duration", questionsDuration + "ms");
+        step3.put("details", Map.of(
+            "tool", "Qwen AI API",
+            "model", qwenModel,
+            "questionCount", questions.size(),
+            "questions", questions
+        ));
+        
+        Map<String, Object> step4 = new HashMap<>();
+        step4.put("stepId", 4);
+        step4.put("stepName", "数据存储");
+        step4.put("description", "保存知识点和习题到数据库");
+        step4.put("status", "running");
+        step4.put("timestamp", System.currentTimeMillis());
+        executionSteps.add(step4);
+        
         KnowledgePoint knowledgePoint = createKnowledgePoint(userId, title, content, summary, fileName);
 
         List<Question> savedQuestions = new ArrayList<>();
@@ -96,11 +157,34 @@ public class KnowledgePointService {
             question.setDifficulty(1);
             savedQuestions.add(questionRepository.save(question));
         }
+        
+        step4.put("status", "completed");
+        step4.put("details", Map.of(
+            "knowledgePointId", knowledgePoint.getId(),
+            "savedQuestions", savedQuestions.size()
+        ));
+        
+        Map<String, Object> step5 = new HashMap<>();
+        step5.put("stepId", 5);
+        step5.put("stepName", "结果输出");
+        step5.put("description", "整合结果并返回给用户");
+        step5.put("status", "completed");
+        step5.put("timestamp", System.currentTimeMillis());
+        step5.put("details", Map.of(
+            "summaryLength", summary != null ? summary.length() : 0,
+            "questionCount", savedQuestions.size()
+        ));
+        executionSteps.add(step5);
 
         Map<String, Object> result = new HashMap<>();
         result.put("knowledgePoint", knowledgePoint);
         result.put("summary", summary);
         result.put("questions", savedQuestions);
+        result.put("executionSteps", executionSteps);
+        result.put("totalDuration", executionSteps.stream()
+            .filter(s -> s.containsKey("duration"))
+            .mapToLong(s -> Long.parseLong(s.get("duration").toString().replace("ms", "")))
+            .sum() + "ms");
         return result;
     }
 
