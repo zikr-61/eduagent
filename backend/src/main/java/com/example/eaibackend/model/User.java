@@ -19,4 +19,15 @@ public class User {
     private String username;
 
     private String password;
+    
+    private String userType; // student 或 teacher
+    
+    private String name; // 姓名
+    
+    // 学生特有字段
+    private String grade; // 年级
+    
+    // 教师特有字段
+    private String subject; // 学科
+    private String school; // 学校
 }

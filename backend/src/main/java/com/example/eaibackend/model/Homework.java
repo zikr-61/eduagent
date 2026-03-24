@@ -15,8 +15,8 @@ public class Homework {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "user_id", nullable = false)
-    private Integer userId;
+    @Column(name = "teacher_id", nullable = false)
+    private Integer teacherId;
 
     @Column(nullable = false)
     private String title;
@@ -25,16 +25,16 @@ public class Homework {
     private String description;
 
     @ColumnDefault("1")
-    private Integer priority = 1;
+    private Integer difficulty = 1; // 1-简单, 2-中等, 3-困难
 
-    @Column(name = "is_completed")
-    private Boolean isCompleted = false;
-
-    @Column(name = "due_date")
+    @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
 
-    @Column(name = "reminder_time")
-    private LocalDateTime reminderTime;
+    @Column(name = "average_duration")
+    private Integer averageDuration; // 平均完成时长（分钟）
+
+    @Column(name = "completion_rate")
+    private Double completionRate; // 完成率
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

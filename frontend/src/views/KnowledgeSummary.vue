@@ -51,16 +51,22 @@
               <p>{{ result.summary }}</p>
             </el-card>
 
-            <el-card shadow="hover" style="margin-top: 20px;">
+            <el-card shadow="hover">
               <template #header>
                 <span>生成的习题 (共{{ result.questions.length }}道)</span>
               </template>
-              <div v-for="(q, index) in result.questions" :key="index" class="question-item">
+              <div v-for="(q, index) in result.questions" :key="q.id || index" class="question-item">
                 <p><strong>{{ index + 1 }}. {{ q.questionText }}</strong></p>
                 <div v-if="q.options" class="options">
                   <p v-for="(opt, i) in q.options.split('\n')" :key="i">{{ opt }}</p>
                 </div>
-                <p class="answer">答案: {{ q.answer }}</p>
+                <div class="practice-section">
+                  <el-input v-model="userAnswers[index]" placeholder="请输入你的答案" style="margin: 10px 0;"></el-input>
+                  <el-button type="primary" @click="checkAnswer(index)">检查答案</el-button>
+                  <p v-if="showAnswers[index]" class="answer">答案: {{ q.answer }}</p>
+                  <p v-if="showAnswers[index] && userAnswers[index] === q.answer" class="correct">回答正确！</p>
+                  <p v-if="showAnswers[index] && userAnswers[index] !== q.answer" class="incorrect">回答错误，正确答案是: {{ q.answer }}</p>
+                </div>
                 <el-divider />
               </div>
               <el-button type="success" @click="downloadQuestions">下载习题</el-button>
@@ -112,10 +118,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { getKnowledgePoints, generateSummaryAndQuestions, getQuestions } from '@/api';
+import { getKnowledgePoints, generateSummaryAndQuestions, getQuestions, startLearning, endLearning, recordErrorQuestion } from '@/api';
 import ExecutionVisualizer from '@/components/ExecutionVisualizer.vue';
 
 const userId = ref(1);
+const userType = ref(localStorage.getItem('userType') || 'student');
 const activeTab = ref('generate');
 const loading = ref(false);
 const result = ref(null);
@@ -124,6 +131,9 @@ const detailDialogVisible = ref(false);
 const currentDetail = ref(null);
 const executionSteps = ref([]);
 const totalDuration = ref('');
+const learningStartTime = ref(null);
+const userAnswers = ref([]);
+const showAnswers = ref([]);
 
 const form = ref({
   title: '',
@@ -131,11 +141,44 @@ const form = ref({
   fileName: ''
 });
 
+const resolveUserId = () => {
+  try {
+    const u = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    userId.value = u.id || 1;
+  } catch {
+    userId.value = 1;
+  }
+};
+
+// 开始学习
+const startLearningSession = async () => {
+  try {
+    const res = await startLearning(userId.value, 'knowledge', null);
+    learningStartTime.value = res.data.startTime;
+  } catch (error) {
+    console.error('开始学习失败:', error);
+  }
+};
+
+// 结束学习
+const endLearningSession = async () => {
+  if (learningStartTime.value) {
+    try {
+      await endLearning(userId.value, 'knowledge', null, learningStartTime.value);
+    } catch (error) {
+      console.error('结束学习失败:', error);
+    }
+  }
+};
+
 const generateSummary = async () => {
   if (!form.value.title || !form.value.content) {
     ElMessage.warning('请填写标题和内容');
     return;
   }
+
+  // 开始学习记录
+  await startLearningSession();
 
   loading.value = true;
   executionSteps.value = [];
@@ -164,6 +207,8 @@ const generateSummary = async () => {
     ElMessage.error('生成失败');
   } finally {
     loading.value = false;
+    // 结束学习记录
+    await endLearningSession();
   }
 };
 
@@ -247,7 +292,26 @@ const handleFileChange = (file) => {
   }
 };
 
+const norm = (s) => (s == null ? '' : String(s).trim());
+
+const checkAnswer = async (index) => {
+  showAnswers.value[index] = true;
+  const q = result.value?.questions?.[index];
+  if (!q || !q.id) return;
+  const ok = norm(userAnswers.value[index]) === norm(q.answer);
+  if (ok || userType.value !== 'student') return;
+  try {
+    const r = await recordErrorQuestion(userId.value, q.id);
+    if (r.data?.success !== false) {
+      ElMessage.success('已记录到错题本');
+    }
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 onMounted(() => {
+  resolveUserId();
   loadHistory();
 });
 </script>
@@ -279,5 +343,21 @@ onMounted(() => {
 .answer {
   color: #67c23a;
   font-weight: bold;
+}
+
+.correct {
+  color: #67c23a;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.incorrect {
+  color: #f56c6c;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.practice-section {
+  margin-top: 15px;
 }
 </style>

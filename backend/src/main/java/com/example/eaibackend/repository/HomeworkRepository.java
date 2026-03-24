@@ -8,9 +8,7 @@ import java.util.List;
 @Repository
 public interface HomeworkRepository extends JpaRepository<Homework, Integer> {
 
-    List<Homework> findByUserId(Integer userId);
+    List<Homework> findByTeacherId(Integer teacherId);
 
-    List<Homework> findByUserIdAndIsCompleted(Integer userId, Boolean isCompleted);
-
-    List<Homework> findByUserIdOrderByPriorityDescCreatedAtDesc(Integer userId);
+    List<Homework> findByTeacherIdOrderByCreatedAtDesc(Integer teacherId);
 }

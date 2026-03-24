@@ -15,7 +15,8 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     // 用户注册
-    public void registerUser(String username, String password) {
+    public User registerUser(String username, String password, String userType, String name, 
+                            String grade, String subject, String school) {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new RuntimeException("Username already exists");
         }
@@ -23,8 +24,17 @@ public class UserService {
         User user = new User();
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));
+        user.setUserType(userType);
+        user.setName(name);
+        
+        if ("student".equals(userType)) {
+            user.setGrade(grade);
+        } else if ("teacher".equals(userType)) {
+            user.setSubject(subject);
+            user.setSchool(school);
+        }
 
-        userRepository.save(user);
+        return userRepository.save(user);
     }
 
     // 用户登录验证
@@ -46,5 +56,11 @@ public class UserService {
         }
 
         return user;
+    }
+
+    // 根据ID获取用户
+    public User getUserById(Integer id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

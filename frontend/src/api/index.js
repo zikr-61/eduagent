@@ -10,6 +10,26 @@ const api = axios.create({
 
 api.interceptors.request.use(
   config => {
+    // 后端接口普遍使用 @RequestParam，需要 application/x-www-form-urlencoded 的表单字段；
+    // axios 传普通对象时默认会按 JSON 序列化，与 Content-Type 不一致会导致 400。
+    const ct = config.headers['Content-Type'] || config.headers['content-type'] || '';
+    if (
+      config.data &&
+      typeof config.data === 'object' &&
+      !(config.data instanceof FormData) &&
+      !(config.data instanceof URLSearchParams) &&
+      String(ct).includes('application/x-www-form-urlencoded')
+    ) {
+      const params = new URLSearchParams();
+      Object.keys(config.data).forEach((key) => {
+        const v = config.data[key];
+        if (v !== undefined && v !== null) {
+          params.append(key, String(v));
+        }
+      });
+      config.data = params.toString();
+      config.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    }
     return config;
   },
   error => {
@@ -57,8 +77,12 @@ export const login = (username, password) => {
   return api.post('/user/login', { username, password });
 };
 
-export const register = (username, password) => {
-  return api.post('/user/register', { username, password });
+export const register = (username, password, userType, name, grade, subject, school) => {
+  return api.post('/user/register', { username, password, userType, name, grade, subject, school });
+};
+
+export const getUserInfo = (id) => {
+  return api.get(`/user/info/${id}`);
 };
 
 export const getStudyRecords = (userId) => {
@@ -81,6 +105,18 @@ export const getMonthlyReport = (userId) => {
   return api.get('/study/monthly-report', { params: { userId } });
 };
 
+export const getAllStudentsStats = () => {
+  return api.get('/study/all-students');
+};
+
+export const startLearning = (userId, activityType, activityId) => {
+  return api.post('/study/start', { userId, activityType, activityId });
+};
+
+export const endLearning = (userId, activityType, activityId, startTime) => {
+  return api.post('/study/end', { userId, activityType, activityId, startTime });
+};
+
 export const getKnowledgePoints = (userId) => {
   return api.get('/knowledge/list', { params: { userId } });
 };
@@ -101,36 +137,60 @@ export const getQuestions = (knowledgePointId) => {
   return api.get(`/knowledge/${knowledgePointId}/questions`);
 };
 
-export const getHomeworkList = (userId) => {
-  return api.get('/homework/list', { params: { userId } });
+export const createHomework = (teacherId, title, description, difficulty, dueDate) => {
+  return api.post('/homework/create', { teacherId, title, description, difficulty, dueDate });
 };
 
-export const getPendingHomework = (userId) => {
-  return api.get('/homework/pending', { params: { userId } });
+export const getTeacherHomeworkList = (teacherId) => {
+  return api.get('/homework/teacher/list', { params: { teacherId } });
 };
 
-export const createHomework = (userId, title, description, priority, dueDate) => {
-  return api.post('/homework/create', { userId, title, description, priority, dueDate });
+export const getStudentHomeworkList = (studentId) => {
+  return api.get('/homework/student/list', { params: { studentId } });
 };
 
-export const updateHomework = (id, title, description, priority, dueDate) => {
-  return api.put(`/homework/update/${id}`, { title, description, priority, dueDate });
+export const getPendingStudentHomework = (studentId) => {
+  return api.get('/homework/student/pending', { params: { studentId } });
+};
+
+export const updateHomework = (id, title, description, difficulty, dueDate) => {
+  return api.put(`/homework/update/${id}`, { title, description, difficulty, dueDate });
 };
 
 export const deleteHomework = (id) => {
   return api.delete(`/homework/delete/${id}`);
 };
 
-export const completeHomework = (id) => {
-  return api.put(`/homework/complete/${id}`);
+export const assignHomework = (homeworkId, studentId) => {
+  return api.post('/homework/assign', { homeworkId, studentId });
 };
 
-export const incompleteHomework = (id) => {
-  return api.put(`/homework/incomplete/${id}`);
+export const submitHomework = (studentId, homeworkId, completionTime) => {
+  return api.post('/homework/submit', { studentId, homeworkId, completionTime });
 };
 
-export const setReminder = (id, reminderTime) => {
-  return api.put(`/homework/reminder/${id}`, { reminderTime });
+export const getHomeworkCompletionRate = (homeworkId) => {
+  return api.get(`/homework/completion-rate/${homeworkId}`);
+};
+
+export const assignHomeworkToAll = (homeworkId, teacherId) => {
+  return api.post('/homework/assign-all', { homeworkId, teacherId });
+};
+
+export const getHomeworkCompletionDetail = (homeworkId, teacherId) => {
+  return api.get(`/homework/${homeworkId}/completion`, { params: { teacherId } });
+};
+
+export const recordErrorQuestion = (studentId, questionId) => {
+  return api.post('/error-questions/record', { studentId, questionId });
+};
+
+export const getErrorQuestions = (studentId) => {
+  return api.get('/error-questions/list', { params: { studentId } });
+};
+
+export const removeErrorQuestion = (studentId, questionId) => {
+  return api.delete('/error-questions/remove', { params: { studentId, questionId } });
 };
 
 export default {
@@ -146,12 +206,18 @@ export default {
   createKnowledgePoint,
   generateSummaryAndQuestions,
   getQuestions,
-  getHomeworkList,
-  getPendingHomework,
+  getTeacherHomeworkList,
+  getStudentHomeworkList,
+  getPendingStudentHomework,
   createHomework,
   updateHomework,
   deleteHomework,
-  completeHomework,
-  incompleteHomework,
-  setReminder
+  assignHomework,
+  submitHomework,
+  getHomeworkCompletionRate,
+  assignHomeworkToAll,
+  getHomeworkCompletionDetail,
+  recordErrorQuestion,
+  getErrorQuestions,
+  removeErrorQuestion
 };

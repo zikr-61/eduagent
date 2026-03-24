@@ -1,12 +1,15 @@
 package com.example.eaibackend.service;
 
 import com.example.eaibackend.model.StudyRecord;
+import com.example.eaibackend.model.User;
 import com.example.eaibackend.repository.StudyRecordRepository;
+import com.example.eaibackend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +19,61 @@ public class StudyRecordService {
 
     @Autowired
     private StudyRecordRepository studyRecordRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
+
+    // 开始学习活动
+    public Map<String, Object> startLearning(Integer userId, String activityType, Integer activityId) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("startTime", LocalDateTime.now());
+        response.put("userId", userId);
+        response.put("activityType", activityType);
+        response.put("activityId", activityId);
+        return response;
+    }
+
+    // 结束学习活动并保存记录
+    public StudyRecord endLearning(Integer userId, String activityType, Integer activityId, 
+                                  LocalDateTime startTime, LocalDateTime endTime) {
+        StudyRecord record = new StudyRecord();
+        record.setUserId(userId);
+        record.setActivityType(activityType);
+        record.setActivityId(activityId);
+        record.setStartTime(startTime);
+        record.setEndTime(endTime);
+        
+        // 计算时长（分钟）
+        long minutes = ChronoUnit.MINUTES.between(startTime, endTime);
+        record.setDurationMinutes((int) minutes);
+        record.setRecordDate(LocalDate.now());
+        
+        return studyRecordRepository.save(record);
+    }
 
     public StudyRecord addStudyRecord(Integer userId, Integer durationMinutes) {
         StudyRecord record = new StudyRecord();
         record.setUserId(userId);
+        record.setActivityType("manual");
+        record.setDurationMinutes(durationMinutes);
+        record.setStartTime(LocalDateTime.now().minusMinutes(durationMinutes));
+        record.setEndTime(LocalDateTime.now());
+        record.setRecordDate(LocalDate.now());
+        return studyRecordRepository.save(record);
+    }
+
+    /** 学生完成作业时记录学习时长，计入学习成果统计 */
+    public StudyRecord addHomeworkStudyRecord(Integer userId, Integer homeworkId, Integer durationMinutes) {
+        if (durationMinutes == null || durationMinutes <= 0) {
+            durationMinutes = 1;
+        }
+        StudyRecord record = new StudyRecord();
+        record.setUserId(userId);
+        record.setActivityType("homework");
+        record.setActivityId(homeworkId);
+        LocalDateTime end = LocalDateTime.now();
+        record.setEndTime(end);
+        record.setStartTime(end.minusMinutes(durationMinutes));
         record.setDurationMinutes(durationMinutes);
         record.setRecordDate(LocalDate.now());
         return studyRecordRepository.save(record);
@@ -108,5 +162,44 @@ public class StudyRecordService {
             }
         }
         return minutes;
+    }
+
+    public List<Map<String, Object>> getAllStudentsStudyStats() {
+        List<User> students = userRepository.findByUserType("student");
+        List<Map<String, Object>> studentsStats = new ArrayList<>();
+        
+        LocalDate today = LocalDate.now();
+        LocalDate weekStart = today.minusDays(6);
+        LocalDate monthStart = today.withDayOfMonth(1);
+        
+        for (User student : students) {
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("id", student.getId());
+            stats.put("name", student.getName());
+            stats.put("grade", student.getGrade());
+            
+            // 计算总学习时长
+            int totalMinutes = getTotalStudyDuration(student.getId());
+            double totalHours = Math.round(totalMinutes / 60.0 * 10) / 10.0;
+            stats.put("totalHours", totalHours);
+            
+            // 计算本周学习时长
+            List<StudyRecord> weeklyRecords = studyRecordRepository.findByUserIdAndRecordDateBetween(
+                student.getId(), weekStart, today);
+            int weeklyMinutes = weeklyRecords.stream().mapToInt(StudyRecord::getDurationMinutes).sum();
+            double weeklyHours = Math.round(weeklyMinutes / 60.0 * 10) / 10.0;
+            stats.put("weeklyHours", weeklyHours);
+            
+            // 计算本月学习时长
+            List<StudyRecord> monthlyRecords = studyRecordRepository.findByUserIdAndRecordDateBetween(
+                student.getId(), monthStart, today);
+            int monthlyMinutes = monthlyRecords.stream().mapToInt(StudyRecord::getDurationMinutes).sum();
+            double monthlyHours = Math.round(monthlyMinutes / 60.0 * 10) / 10.0;
+            stats.put("monthlyHours", monthlyHours);
+            
+            studentsStats.add(stats);
+        }
+        
+        return studentsStats;
     }
 }

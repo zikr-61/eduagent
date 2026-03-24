@@ -23,6 +23,10 @@
             <el-icon><List /></el-icon>
             <span>作业管理</span>
           </el-menu-item>
+          <el-menu-item v-if="userType === 'student'" index="/wrong-questions">
+            <el-icon><CircleClose /></el-icon>
+            <span>错题管理</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
@@ -44,12 +48,13 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Clock, Document, List } from '@element-plus/icons-vue';
+import { Clock, Document, List, CircleClose } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const route = useRoute();
 const isLoggedIn = ref(false);
 const username = ref('User');
+const userType = ref('');
 const activeMenu = ref('/study-stats');
 
 const checkLogin = () => {
@@ -58,8 +63,10 @@ const checkLogin = () => {
     isLoggedIn.value = true;
     const user = JSON.parse(userInfo);
     username.value = user.username || 'User';
+    userType.value = user.userType || localStorage.getItem('userType') || '';
   } else {
     isLoggedIn.value = false;
+    userType.value = '';
   }
 };
 

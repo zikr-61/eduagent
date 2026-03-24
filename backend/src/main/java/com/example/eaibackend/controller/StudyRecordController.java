@@ -3,6 +3,7 @@ package com.example.eaibackend.controller;
 import com.example.eaibackend.service.StudyRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
@@ -11,6 +12,23 @@ public class StudyRecordController {
 
     @Autowired
     private StudyRecordService studyRecordService;
+
+    @PostMapping("/start")
+    public Map<String, Object> startLearning(@RequestParam Integer userId, 
+                                           @RequestParam String activityType, 
+                                           @RequestParam(required = false) Integer activityId) {
+        return studyRecordService.startLearning(userId, activityType, activityId);
+    }
+
+    @PostMapping("/end")
+    public Map<String, Object> endLearning(@RequestParam Integer userId, 
+                                         @RequestParam String activityType, 
+                                         @RequestParam(required = false) Integer activityId, 
+                                         @RequestParam String startTime) {
+        LocalDateTime start = LocalDateTime.parse(startTime);
+        LocalDateTime end = LocalDateTime.now();
+        return Map.of("record", studyRecordService.endLearning(userId, activityType, activityId, start, end));
+    }
 
     @PostMapping("/add")
     public Map<String, Object> addStudyRecord(@RequestParam Integer userId, @RequestParam Integer durationMinutes) {
@@ -37,5 +55,10 @@ public class StudyRecordController {
     @GetMapping("/monthly-report")
     public Map<String, Object> getMonthlyReport(@RequestParam Integer userId) {
         return studyRecordService.getMonthlyReport(userId);
+    }
+
+    @GetMapping("/all-students")
+    public Map<String, Object> getAllStudentsStudyStats() {
+        return Map.of("studentsStats", studyRecordService.getAllStudentsStudyStats());
     }
 }
