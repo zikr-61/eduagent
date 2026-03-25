@@ -46,17 +46,17 @@
       <div v-else-if="userType === 'student'">
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-statistic title="总学习时长" :value="totalHours" suffix="小时">
+            <el-statistic title="总学习时长" :value="totalHours" :precision="1" suffix="小时">
               <template #prefix>
                 <el-icon><Clock /></el-icon>
               </template>
             </el-statistic>
           </el-col>
           <el-col :span="8">
-            <el-statistic title="本周学习时长" :value="weeklyHours" suffix="小时" />
+            <el-statistic title="本周学习时长" :value="weeklyHours" :precision="1" suffix="小时" />
           </el-col>
           <el-col :span="8">
-            <el-statistic title="本月学习时长" :value="monthlyHours" suffix="小时" />
+            <el-statistic title="本月学习时长" :value="monthlyHours" :precision="1" suffix="小时" />
           </el-col>
         </el-row>
 

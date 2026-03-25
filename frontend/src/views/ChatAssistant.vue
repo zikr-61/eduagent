@@ -1,8 +1,8 @@
 <template>
   <div class="chat-assistant">
-    <el-row :gutter="16">
+    <div class="chat-layout">
       <!-- 左侧：历史会话 -->
-      <el-col :span="5" class="sidebar">
+      <div class="sidebar">
         <div class="sidebar-header">
           <span class="sidebar-title">历史对话</span>
           <el-button type="primary" size="small" :icon="Plus" @click="newChat">新对话</el-button>
@@ -21,10 +21,10 @@
           </div>
           <div v-if="sessions.length === 0" class="empty-sessions">暂无历史记录</div>
         </el-scrollbar>
-      </el-col>
+      </div>
 
       <!-- 右侧：主对话区 -->
-      <el-col :span="19" class="main-area">
+      <div class="main-area">
         <!-- 顶部标题 -->
         <div class="chat-header">
           <div class="header-left">
@@ -141,8 +141,8 @@
             </el-button>
           </div>
         </div>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -399,8 +399,17 @@ onMounted(() => {
   min-height: 0;
 }
 
+.chat-layout {
+  display: flex;
+  flex: 1;
+  gap: 16px;
+  min-height: 0;
+  height: 100%;
+}
+
 /* ── 左侧会话栏 ── */
 .sidebar {
+  flex: 0 0 20%;
   background: #fff;
   border-radius: 8px;
   padding: 16px 0;
@@ -408,6 +417,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 .sidebar-header {
   display: flex;
@@ -442,6 +452,8 @@ onMounted(() => {
 
 /* ── 主对话区 ── */
 .main-area {
+  flex: 1;
+  min-width: 0;
   background: #fff;
   border-radius: 8px;
   padding: 0;
