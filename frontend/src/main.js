@@ -16,13 +16,27 @@ const debounce = (fn, delay) => {
   };
 };
 
-const _ResizeObserver = window.ResizeObserver;
-window.ResizeObserver = class ResizeObserver extends _ResizeObserver {
-  constructor(callback) {
-    callback = debounce(callback, 16);
-    super(callback);
-  }
-};
+
+// 移除或修改 ResizeObserver 的处理
+// 原代码：
+// const _ResizeObserver = window.ResizeObserver;
+// window.ResizeObserver = class ResizeObserver extends _ResizeObserver {
+//   constructor(callback) {
+//     callback = debounce(callback, 16);
+//     super(callback);
+//   }
+// };
+
+// 替换为：
+if (window.ResizeObserver) {
+  const _ResizeObserver = window.ResizeObserver;
+  window.ResizeObserver = class ResizeObserver extends _ResizeObserver {
+    constructor(callback) {
+      callback = debounce(callback, 16);
+      super(callback);
+    }
+  };
+}
 
 const errorHandler = (event) => {
   if (event.message && event.message.includes('ResizeObserver')) {
