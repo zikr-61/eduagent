@@ -120,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { Clock } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { getTotalDuration, getWeeklyReport, getMonthlyReport, getAllStudentsStats } from '@/api';
@@ -167,8 +167,6 @@ const loadData = async () => {
       // 教师加载所有学生的学习数据
       const res = await getAllStudentsStats();
       studentsStats.value = res.data.studentsStats || [];
-      // 渲染学生学习时长对比图表
-      renderStudentChart();
     } else if (userType.value === 'student') {
       // 学生加载自己的学习数据
       const totalRes = await getTotalDuration(userId.value);
