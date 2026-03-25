@@ -53,10 +53,6 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item v-if="form.userType === 'teacher'" label="学校" prop="school">
-          <el-input v-model="form.school" placeholder="请输入学校名称" />
-        </el-form-item>
-
         <el-form-item>
           <el-button type="primary" native-type="submit" class="register-button">注册</el-button>
         </el-form-item>
@@ -81,8 +77,7 @@ export default {
         userType: 'student',
         name: '',
         grade: '',
-        subject: '',
-        school: ''
+        subject: ''
       },
       rules: {
         username: [
@@ -105,9 +100,6 @@ export default {
         subject: [
           { required: true, message: '请选择学科', trigger: 'change' }
         ],
-        school: [
-          { required: true, message: '请输入学校名称', trigger: 'blur' }
-        ]
       }
     };
   },
@@ -121,9 +113,8 @@ export default {
               this.form.password, 
               this.form.userType, 
               this.form.name, 
-              this.form.grade, 
-              this.form.subject, 
-              this.form.school
+              this.form.grade,
+              this.form.subject
             );
             this.$alert('注册成功！');
             this.$router.push('/login');

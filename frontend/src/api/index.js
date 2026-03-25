@@ -97,8 +97,8 @@ export const login = (username, password) => {
   return api.post('/user/login', { username, password });
 };
 
-export const register = (username, password, userType, name, grade, subject, school) => {
-  return api.post('/user/register', { username, password, userType, name, grade, subject, school });
+export const register = (username, password, userType, name, grade, subject) => {
+  return api.post('/user/register', { username, password, userType, name, grade, subject });
 };
 
 export const getUserInfo = (id) => {
