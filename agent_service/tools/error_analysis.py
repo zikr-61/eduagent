@@ -67,11 +67,15 @@ class ErrorAnalysisTool(BaseTool):
 以下是学生的错题数据（共{len(rows)}道错题）：
 {json.dumps(error_summary, ensure_ascii=False, indent=2)}
 
-请分析：
+请分析（重要约束）：
 1. 错误主要集中在哪些知识点领域
 2. 是概念理解问题（同一领域反复错）还是粗心问题（难度低但错）
 3. 列出最需要加强的3个具体方向
 4. 给出简短的复习建议
+
+约束：
+- 只能基于上面给出的字段与数值（knowledge_area / question / error_count / difficulty），不得编造输入数据中不存在的考试次数、时间变化、具体正确率等信息。
+- 若你认为数据不足以支持某个“具体数字/具体结论”，请写“数据不足，建议补充xxx”，不要硬猜。
 
 请用简洁的中文回答，分点列出。
 """

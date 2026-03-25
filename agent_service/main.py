@@ -119,6 +119,8 @@ async def chat_stream(req: ChatRequest):
             full_ai_response: list[str] = []
             step_counter = [0]
             active_steps: dict[str, dict] = {}
+            last_teacher_class_analysis_output: str | None = None
+            force_tool_only_response = False
 
             async for event in agent.astream_events(
                 {"messages": messages},
@@ -165,12 +167,17 @@ async def chat_stream(req: ChatRequest):
                         step["details"] = {}
                     step["details"]["output"] = output[:300]
                     yield f"data: {json.dumps({'type': 'tool_result', 'tool': event_name, 'step': step}, ensure_ascii=False)}\n\n"
+                    # 如果 teacher_class_analysis 明确返回“数据不足”，则禁止模型继续编造回复：
+                    # 直接用工具输出作为最终回答。
+                    if event_name == "teacher_class_analysis" and output.strip().startswith("【数据不足】"):
+                        last_teacher_class_analysis_output = output.strip()
+                        force_tool_only_response = True
 
                 # LLM 流式 token（不同版本事件名可能不同，尽量都收）
                 elif event_type in ("on_chat_model_stream", "on_llm_stream"):
                     chunk = event.get("data", {}).get("chunk")
                     piece = _extract_stream_text(chunk)
-                    if piece:
+                    if piece and not force_tool_only_response:
                         full_ai_response.append(piece)
                         yield f"data: {json.dumps({'type': 'text_chunk', 'content': piece}, ensure_ascii=False)}\n\n"
 
@@ -178,13 +185,15 @@ async def chat_stream(req: ChatRequest):
                 elif event_type == "on_chat_model_end":
                     chunk = event.get("data", {}).get("output")
                     piece = _extract_stream_text(chunk)
-                    if piece and not full_ai_response:
+                    if piece and not full_ai_response and not force_tool_only_response:
                         full_ai_response.append(piece)
                         yield f"data: {json.dumps({'type': 'text_chunk', 'content': piece}, ensure_ascii=False)}\n\n"
 
             # LangGraph 常不把最终回复拆成 token 流：若上面没收齐，再同步跑一次拿最终 AIMessage（仅兜底，不重复写库逻辑）
             complete_response = "".join(full_ai_response)
-            if not complete_response.strip():
+            if force_tool_only_response and last_teacher_class_analysis_output:
+                complete_response = last_teacher_class_analysis_output
+            elif not complete_response.strip():
                 try:
                     yield f"data: {json.dumps({'type': 'status', 'message': '正在汇总最终回答…'}, ensure_ascii=False)}\n\n"
                     final_state = await agent.ainvoke(

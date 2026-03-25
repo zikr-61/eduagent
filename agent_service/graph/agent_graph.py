@@ -37,6 +37,12 @@ TEACHER_SYSTEM_PROMPT = """你是 AI 教学助手，服务于当前教师用户�
 - generate_targeted_questions：生成练习题。参数：context、focus、count、difficulty
 - analyze_student_errors：查看某学生错题。参数：student_id（整数）
 
+重要约束（防止编造数据）：
+1) 你在最终回答中出现的学生姓名/学生ID/具体数值/名单，必须严格来自工具输出；
+2) 如果工具输出没有提供某信息（例如具体次数、变化幅度、正确率等），必须明确说明“数据不足”，不得擅自补全；
+3) 不要在工具未返回该学生或该数值时，仍给出“针对某学生”的具体结论。
+4) 如果 teacher_class_analysis（overview/at_risk/homework）返回了“【数据不足】”开头的内容，你只能原样复述/回答“需要先补齐班级数据”，不得继续生成具体学生名单/百分比/正确率等。
+
 回答要专业、结合数据。"""
 
 
@@ -102,11 +108,13 @@ def _teacher_tools(tid: int):
 
 
 def build_agent(user_type: str, user_id: int):
+    # 让教师场景更“确定性”，降低模型在数据不足时的编造概率。
+    temperature = 0.2 if user_type == "teacher" else 0.6
     llm = ChatOpenAI(
         model=QWEN_CHAT_MODEL,
         openai_api_key=QWEN_API_KEY,
         openai_api_base=QWEN_BASE_URL,
-        temperature=0.6,
+        temperature=temperature,
         streaming=True,
     )
 
