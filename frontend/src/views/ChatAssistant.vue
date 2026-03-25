@@ -147,7 +147,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus, ChatDotRound, Cpu, User, Promotion } from '@element-plus/icons-vue';
 import ExecutionVisualizer from '@/components/ExecutionVisualizer.vue';
@@ -330,13 +330,16 @@ async function loadSessions() {
     if (res.data?.agentOnline === false) {
       agentOffline.value = true;
       sessions.value = [];
+      startOfflinePoller(); // Python 离线时启动轮询
       return;
     }
     agentOffline.value = false;
     sessions.value = res.data?.sessions || [];
+    stopOfflinePoller(); // 恢复在线后停止轮询
   } catch (e) {
     agentOffline.value = true;
     sessions.value = [];
+    startOfflinePoller();
     console.warn('加载会话失败:', e.message);
   }
 }
@@ -393,9 +396,34 @@ function renderMarkdown(text) {
     .replace(/\n/g, '<br>');
 }
 
-onMounted(() => {
-  loadSessions();
+// 当 agent 离线时，每 15 秒自动重新探测一次，Python 启动后自动恢复
+let offlinePoller = null;
+
+function startOfflinePoller() {
+  if (offlinePoller) return;
+  offlinePoller = setInterval(async () => {
+    if (!agentOffline.value || agentRunning.value) return;
+    await loadSessions();
+    if (!agentOffline.value) {
+      ElMessage.success('AI Agent 已上线');
+      stopOfflinePoller();
+    }
+  }, 15000);
+}
+
+function stopOfflinePoller() {
+  if (offlinePoller) {
+    clearInterval(offlinePoller);
+    offlinePoller = null;
+  }
+}
+
+onMounted(async () => {
+  await loadSessions();
+  if (agentOffline.value) startOfflinePoller();
 });
+
+onUnmounted(() => stopOfflinePoller());
 </script>
 
 <style scoped>
