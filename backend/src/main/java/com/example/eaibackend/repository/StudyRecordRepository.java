@@ -15,9 +15,10 @@ public interface StudyRecordRepository extends JpaRepository<StudyRecord, Intege
 
     List<StudyRecord> findByUserIdAndRecordDateBetween(Integer userId, LocalDate startDate, LocalDate endDate);
 
-    @Query("SELECT SUM(s.durationMinutes) FROM StudyRecord s WHERE s.userId = :userId")
+    // 只统计完成作业后的用时
+    @Query("SELECT SUM(s.durationMinutes) FROM StudyRecord s WHERE s.userId = :userId AND s.activityType = 'homework'")
     Integer getTotalDurationByUserId(@Param("userId") Integer userId);
 
-    @Query("SELECT SUM(s.durationMinutes) FROM StudyRecord s WHERE s.userId = :userId AND s.recordDate BETWEEN :startDate AND :endDate")
+    @Query("SELECT SUM(s.durationMinutes) FROM StudyRecord s WHERE s.userId = :userId AND s.activityType = 'homework' AND s.recordDate BETWEEN :startDate AND :endDate")
     Integer getDurationByUserIdAndDateRange(@Param("userId") Integer userId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 }

@@ -13,7 +13,7 @@
         :closable="false"
         show-icon
         style="margin-bottom: 16px"
-        title="在「知识点总结」中生成习题并作答时，答错的题目会自动进入错题本。在此复习、重新作答，答对后可移出错题本。"
+        title="在「知识点总结」中生成习题并作答时，答错的题目会自动进入错题本。你可以在此重新作答，答对后可移出错题本。"
       />
 
       <el-empty v-if="!loading && list.length === 0" description="暂无错题，去知识点总结里练一练吧" />
@@ -29,14 +29,14 @@
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="openRedo(row)">复习 / 重做</el-button>
+            <el-button type="primary" link @click="openRedo(row)">重做</el-button>
             <el-button type="danger" link @click="removeRow(row)">移出错题本</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <el-dialog v-model="redoVisible" title="复习与重做" width="640px" destroy-on-close @closed="closeRedo">
+    <el-dialog v-model="redoVisible" title="重做" width="640px" destroy-on-close @closed="closeRedo">
       <div v-if="current" class="redo-body">
         <p class="meta"><strong>知识点：</strong>{{ current.knowledgeTitle }}</p>
         <p class="q-text"><strong>题目：</strong>{{ current.questionText }}</p>
@@ -51,13 +51,8 @@
           style="margin-top: 12px"
         />
         <div v-if="showResult" class="result-msg" :class="redoCorrect ? 'ok' : 'bad'">
-          {{ redoCorrect ? '回答正确！可将该题移出错题本。' : '仍不正确，再想想看，或查看提示。' }}
+          {{ redoCorrect ? '回答正确！可将该题移出错题本。' : '仍不正确，再想想看。' }}
         </div>
-        <el-collapse v-if="showResult && !redoCorrect" style="margin-top: 8px">
-          <el-collapse-item title="查看参考答案" name="1">
-            <span class="ans">{{ current.answer }}</span>
-          </el-collapse-item>
-        </el-collapse>
       </div>
       <template #footer>
         <el-button @click="redoVisible = false">关闭</el-button>

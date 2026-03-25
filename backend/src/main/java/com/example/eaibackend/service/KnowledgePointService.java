@@ -176,6 +176,9 @@ public class KnowledgePointService {
         ));
         executionSteps.add(step5);
 
+        // 知识点已保存，通知 Python Agent 服务清除该用户的向量缓存
+        notifyAgentCacheInvalidate(userId);
+
         Map<String, Object> result = new HashMap<>();
         result.put("knowledgePoint", knowledgePoint);
         result.put("summary", summary);
@@ -186,6 +189,20 @@ public class KnowledgePointService {
             .mapToLong(s -> Long.parseLong(s.get("duration").toString().replace("ms", "")))
             .sum() + "ms");
         return result;
+    }
+
+    private void notifyAgentCacheInvalidate(Integer userId) {
+        try {
+            String body = "{\"user_id\":" + userId + "}";
+            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("http://localhost:8000/agent/knowledge/invalidate"))
+                    .header("Content-Type", "application/json")
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            httpClient.sendAsync(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            // 非阻塞，Python 服务不在线时不影响知识点保存
+        }
     }
 
     private String generateSummaryWithAI(String content) {

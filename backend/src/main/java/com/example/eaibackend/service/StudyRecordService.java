@@ -102,6 +102,8 @@ public class StudyRecordService {
         }
 
         for (StudyRecord record : weeklyRecords) {
+            // 只统计完成作业后的用时
+            if (!"homework".equals(record.getActivityType())) continue;
             totalMinutes += record.getDurationMinutes();
             dailyStudyMap.put(record.getRecordDate().toString(),
                 dailyStudyMap.getOrDefault(record.getRecordDate().toString(), 0) + record.getDurationMinutes());
@@ -127,6 +129,8 @@ public class StudyRecordService {
         Map<String, Integer> weeklyStudyMap = new HashMap<>();
 
         for (StudyRecord record : monthlyRecords) {
+            // 只统计完成作业后的用时
+            if (!"homework".equals(record.getActivityType())) continue;
             totalMinutes += record.getDurationMinutes();
         }
 
@@ -157,6 +161,7 @@ public class StudyRecordService {
     private int calculateWeekMinutes(List<StudyRecord> records, LocalDate start, LocalDate end) {
         int minutes = 0;
         for (StudyRecord record : records) {
+            if (!"homework".equals(record.getActivityType())) continue;
             if (!record.getRecordDate().isBefore(start) && !record.getRecordDate().isAfter(end)) {
                 minutes += record.getDurationMinutes();
             }
@@ -186,14 +191,20 @@ public class StudyRecordService {
             // 计算本周学习时长
             List<StudyRecord> weeklyRecords = studyRecordRepository.findByUserIdAndRecordDateBetween(
                 student.getId(), weekStart, today);
-            int weeklyMinutes = weeklyRecords.stream().mapToInt(StudyRecord::getDurationMinutes).sum();
+            int weeklyMinutes = weeklyRecords.stream()
+                .filter(r -> "homework".equals(r.getActivityType()))
+                .mapToInt(StudyRecord::getDurationMinutes)
+                .sum();
             double weeklyHours = Math.round(weeklyMinutes / 60.0 * 10) / 10.0;
             stats.put("weeklyHours", weeklyHours);
             
             // 计算本月学习时长
             List<StudyRecord> monthlyRecords = studyRecordRepository.findByUserIdAndRecordDateBetween(
                 student.getId(), monthStart, today);
-            int monthlyMinutes = monthlyRecords.stream().mapToInt(StudyRecord::getDurationMinutes).sum();
+            int monthlyMinutes = monthlyRecords.stream()
+                .filter(r -> "homework".equals(r.getActivityType()))
+                .mapToInt(StudyRecord::getDurationMinutes)
+                .sum();
             double monthlyHours = Math.round(monthlyMinutes / 60.0 * 10) / 10.0;
             stats.put("monthlyHours", monthlyHours);
             

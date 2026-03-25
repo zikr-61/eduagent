@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+/** 与 Spring Boot 一致，供 fetch 流式接口等使用 */
+export const API_BASE = 'http://localhost:8080/api';
+
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: API_BASE,
   timeout: 60000,
   headers: {
     'Content-Type': 'application/x-www-form-urlencoded'
@@ -114,7 +117,11 @@ export const startLearning = (userId, activityType, activityId) => {
 };
 
 export const endLearning = (userId, activityType, activityId, startTime) => {
-  return api.post('/study/end', { userId, activityType, activityId, startTime });
+  // Spring LocalDateTime.parse 不支持 ISO 8601 的 'Z' 后缀和毫秒，需要裁剪
+  const cleanTime = String(startTime)
+    .replace('Z', '')           // 去掉时区标识
+    .replace(/\.\d+$/, '');    // 去掉毫秒部分
+  return api.post('/study/end', { userId, activityType, activityId, startTime: cleanTime });
 };
 
 export const getKnowledgePoints = (userId) => {
@@ -193,6 +200,19 @@ export const removeErrorQuestion = (studentId, questionId) => {
   return api.delete('/error-questions/remove', { params: { studentId, questionId } });
 };
 
+// ── Agent：经 Spring Boot 8080 代理到 Python 8000（避免浏览器直连 8000 连接被拒绝）────────
+export const getAgentSessions = (userId) => {
+  return api.get('/agent/proxy/sessions', { params: { user_id: userId } });
+};
+
+export const getAgentSessionMessages = (sessionId, userId) => {
+  return api.get(`/agent/proxy/sessions/${sessionId}/messages`, { params: { user_id: userId } });
+};
+
+export const invalidateKnowledgeCache = (userId) => {
+  return api.post('/agent/knowledge/invalidate', null, { params: { userId } });
+};
+
 export default {
   login,
   register,
@@ -219,5 +239,9 @@ export default {
   getHomeworkCompletionDetail,
   recordErrorQuestion,
   getErrorQuestions,
-  removeErrorQuestion
+  removeErrorQuestion,
+  getAgentSessions,
+  getAgentSessionMessages,
+  invalidateKnowledgeCache,
+  API_BASE
 };

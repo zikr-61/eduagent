@@ -12,9 +12,9 @@
         <!-- 学生端 - 作业列表 -->
         <el-tab-pane v-if="userType === 'student'" label="我的作业" name="student-list">
           <el-radio-group v-model="filterStatus" @change="loadHomework">
-            <el-radio-button label="all">全部</el-radio-button>
-            <el-radio-button label="pending">待完成</el-radio-button>
-            <el-radio-button label="completed">已完成</el-radio-button>
+            <el-radio-button value="all">全部</el-radio-button>
+            <el-radio-button value="pending">待完成</el-radio-button>
+            <el-radio-button value="completed">已完成</el-radio-button>
           </el-radio-group>
 
           <el-table :data="filteredHomework" style="width: 100%; margin-top: 20px;" stripe>

@@ -27,9 +27,13 @@
             <el-icon><CircleClose /></el-icon>
             <span>错题管理</span>
           </el-menu-item>
+          <el-menu-item index="/chat">
+            <el-icon><ChatDotRound /></el-icon>
+            <span>AI 辅导</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
-      <el-container>
+      <el-container style="height: 100%;">
         <el-header style="background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.1); display: flex; justify-content: space-between; align-items: center;">
           <h3>教育助手AI Agent</h3>
           <div>
@@ -37,7 +41,7 @@
             <el-button type="danger" size="small" @click="logout">退出登录</el-button>
           </div>
         </el-header>
-        <el-main>
+        <el-main style="height: 100%;">
           <router-view></router-view>
         </el-main>
       </el-container>
@@ -48,7 +52,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Clock, Document, List, CircleClose } from '@element-plus/icons-vue';
+import { Clock, Document, List, CircleClose, ChatDotRound } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -103,5 +107,6 @@ checkLogin();
 
 .el-main {
   background-color: #f0f2f5;
+  height: 100%;
 }
 </style>

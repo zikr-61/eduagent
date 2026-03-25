@@ -36,6 +36,9 @@ public class Homework {
     @Column(name = "completion_rate")
     private Double completionRate; // 完成率
 
+    @Column(name = "knowledge_point_id")
+    private Integer knowledgePointId; // 可选关联知识点（方案B轻量挂载）
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

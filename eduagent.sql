@@ -60,12 +60,14 @@ CREATE TABLE IF NOT EXISTS homework (
     teacher_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    difficulty INT DEFAULT 1, -- 难度级别：1-简单，2-中等，3-困难
+    difficulty INT DEFAULT 1,          -- 难度级别：1-简单，2-中等，3-困难
     due_date DATE,
-    average_duration INT, -- 平均完成时长（分钟）
-    completion_rate DOUBLE, -- 完成率
+    average_duration INT,              -- 平均完成时长（分钟）
+    completion_rate DOUBLE,            -- 完成率
+    knowledge_point_id INT NULL,       -- 可选关联的知识点（方案B：轻量挂载）
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (knowledge_point_id) REFERENCES knowledge_points(id) ON DELETE SET NULL
 );
 
 -- 用户答题记录表
@@ -107,6 +109,29 @@ CREATE TABLE IF NOT EXISTS error_questions (
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
     UNIQUE KEY unique_student_question (student_id, question_id)
+);
+
+-- AI 对话会话表
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(64) NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    title VARCHAR(255),              -- 可选会话标题（取第一条消息前20字）
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_session (user_id, created_at)
+);
+
+-- AI 对话消息表
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(64) NOT NULL,
+    role VARCHAR(10) NOT NULL,        -- human / ai
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES chat_sessions(session_id) ON DELETE CASCADE,
+    INDEX idx_session_time (session_id, created_at)
 );
 
 -- 插入默认管理员用户
