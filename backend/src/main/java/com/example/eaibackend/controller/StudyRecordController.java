@@ -43,7 +43,7 @@ public class StudyRecordController {
     @GetMapping("/total")
     public Map<String, Object> getTotalDuration(@RequestParam Integer userId) {
         int totalMinutes = studyRecordService.getTotalStudyDuration(userId);
-        int totalHours = totalMinutes / 60;
+        double totalHours = Math.round(totalMinutes / 60.0 * 10) / 10.0;
         return Map.of("totalMinutes", totalMinutes, "totalHours", totalHours);
     }
 

@@ -19,6 +19,19 @@ public class ErrorQuestion {
     @Column(name = "question_id", nullable = false)
     private Integer questionId;
 
+    // 快照字段：记录时保存题目内容，防止原题被删除后丢失
+    @Column(name = "question_text_snapshot", columnDefinition = "TEXT")
+    private String questionTextSnapshot;
+
+    @Column(name = "options_snapshot", columnDefinition = "TEXT")
+    private String optionsSnapshot;
+
+    @Column(name = "correct_answer_snapshot")
+    private String correctAnswerSnapshot;
+
+    @Column(name = "knowledge_title_snapshot")
+    private String knowledgeTitleSnapshot;
+
     @Column(name = "error_time", nullable = false)
     private LocalDateTime errorTime;
 

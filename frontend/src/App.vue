@@ -36,8 +36,11 @@
       <el-container style="height: 100%;">
         <el-header style="background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.1); display: flex; justify-content: space-between; align-items: center;">
           <h3>教育助手AI Agent</h3>
-          <div>
-            <span style="margin-right: 20px;">欢迎, {{ username }}</span>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:12px;color:#909399;background:#f5f7fa;padding:3px 10px;border-radius:12px;">
+              已在线 {{ sessionMinutes }} 分钟
+            </span>
+            <span>欢迎, {{ username }}</span>
             <el-button type="danger" size="small" @click="logout">退出登录</el-button>
           </div>
         </el-header>
@@ -50,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Clock, Document, List, CircleClose, ChatDotRound } from '@element-plus/icons-vue';
 
@@ -61,6 +64,36 @@ const username = ref('User');
 const userType = ref('');
 const activeMenu = ref('/study-stats');
 
+// ── 在线计时器（纯展示，不写数据库）──
+const sessionMinutes = ref(0);
+let timerInterval = null;
+
+const updateSessionTime = () => {
+  const loginTime = localStorage.getItem('loginTime');
+  if (loginTime) {
+    sessionMinutes.value = Math.floor((Date.now() - parseInt(loginTime)) / 60000);
+  }
+};
+
+const startTimer = () => {
+  updateSessionTime();
+  timerInterval = setInterval(updateSessionTime, 60000);
+};
+
+const stopTimer = () => {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  sessionMinutes.value = 0;
+};
+
+onMounted(() => {
+  if (localStorage.getItem('loginTime')) startTimer();
+});
+
+onUnmounted(() => stopTimer());
+
 const checkLogin = () => {
   const userInfo = localStorage.getItem('userInfo');
   if (userInfo) {
@@ -68,15 +101,21 @@ const checkLogin = () => {
     const user = JSON.parse(userInfo);
     username.value = user.username || 'User';
     userType.value = user.userType || localStorage.getItem('userType') || '';
+    if (localStorage.getItem('loginTime') && !timerInterval) startTimer();
   } else {
     isLoggedIn.value = false;
     userType.value = '';
+    stopTimer();
   }
 };
 
 const logout = () => {
   localStorage.removeItem('userInfo');
+  localStorage.removeItem('userType');
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('loginTime');
   isLoggedIn.value = false;
+  stopTimer();
   router.push('/login');
 };
 

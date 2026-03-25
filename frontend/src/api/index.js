@@ -13,6 +13,12 @@ const api = axios.create({
 
 api.interceptors.request.use(
   config => {
+    // 附加 JWT Token
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+
     // 后端接口普遍使用 @RequestParam，需要 application/x-www-form-urlencoded 的表单字段；
     // axios 传普通对象时默认会按 JSON 序列化，与 Content-Type 不一致会导致 400。
     const ct = config.headers['Content-Type'] || config.headers['content-type'] || '';
@@ -54,6 +60,11 @@ api.interceptors.response.use(
           break;
         case 401:
           console.error('未授权，请重新登录');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userInfo');
+          localStorage.removeItem('userType');
+          localStorage.removeItem('loginTime');
+          window.location.href = '/login';
           break;
         case 403:
           console.error('拒绝访问');
@@ -138,6 +149,10 @@ export const createKnowledgePoint = (userId, title, content, summary, fileName) 
 
 export const generateSummaryAndQuestions = (userId, title, content, fileName) => {
   return api.post('/knowledge/generate', { userId, title, content, fileName });
+};
+
+export const generateLessonPlan = (userId, title, gradeLevel, content) => {
+  return api.post('/knowledge/generate-plan', { userId, title, gradeLevel, content });
 };
 
 export const getQuestions = (knowledgePointId) => {
@@ -225,6 +240,7 @@ export default {
   getKnowledgePoint,
   createKnowledgePoint,
   generateSummaryAndQuestions,
+  generateLessonPlan,
   getQuestions,
   getTeacherHomeworkList,
   getStudentHomeworkList,

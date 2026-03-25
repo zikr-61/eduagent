@@ -56,7 +56,11 @@ export default {
             if (response.data) {
               localStorage.setItem('userInfo', JSON.stringify(response.data.user));
               localStorage.setItem('userType', response.data.userType);
-              
+              if (response.data.token) {
+                localStorage.setItem('authToken', response.data.token);
+              }
+              localStorage.setItem('loginTime', Date.now().toString());
+
               // 所有用户都跳转到学习成果统计页面
               this.$router.push('/study-stats');
             } else {

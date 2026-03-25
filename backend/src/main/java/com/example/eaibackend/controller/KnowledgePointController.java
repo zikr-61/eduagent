@@ -47,4 +47,13 @@ public class KnowledgePointController {
             @RequestParam(required = false) String fileName) {
         return Map.of("data", knowledgePointService.generateSummaryAndQuestions(userId, title, content, fileName));
     }
+
+    @PostMapping("/generate-plan")
+    public Map<String, Object> generateLessonPlan(
+            @RequestParam Integer userId,
+            @RequestParam String title,
+            @RequestParam(required = false) String gradeLevel,
+            @RequestParam String content) {
+        return Map.of("data", knowledgePointService.generateLessonPlan(userId, title, gradeLevel, content));
+    }
 }

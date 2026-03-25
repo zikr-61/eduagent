@@ -216,9 +216,13 @@ async function sendMessage() {
   const startTime = Date.now();
 
   try {
+    const token = localStorage.getItem('authToken');
     const response = await fetch(STREAM_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({
         message: text,
         user_id: userId.value,

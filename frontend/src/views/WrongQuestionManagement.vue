@@ -53,6 +53,9 @@
         <div v-if="showResult" class="result-msg" :class="redoCorrect ? 'ok' : 'bad'">
           {{ redoCorrect ? '回答正确！可将该题移出错题本。' : '仍不正确，再想想看。' }}
         </div>
+        <div v-if="showResult && !redoCorrect && current.answer" class="ans-hint">
+          正确答案：<strong>{{ current.answer }}</strong>
+        </div>
       </div>
       <template #footer>
         <el-button @click="redoVisible = false">关闭</el-button>
@@ -192,5 +195,14 @@ onMounted(() => {
 .ans {
   color: #67c23a;
   font-weight: 600;
+}
+.ans-hint {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fdf6ec;
+  border-left: 3px solid #e6a23c;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #606266;
 }
 </style>

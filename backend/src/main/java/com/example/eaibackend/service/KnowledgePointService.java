@@ -191,6 +191,107 @@ public class KnowledgePointService {
         return result;
     }
 
+    @Transactional
+    public Map<String, Object> generateLessonPlan(Integer userId, String title, String gradeLevel, String content) {
+        List<Map<String, Object>> executionSteps = new ArrayList<>();
+
+        Map<String, Object> step1 = new HashMap<>();
+        step1.put("stepId", 1);
+        step1.put("stepName", "任务分析");
+        step1.put("description", "解析教学主题，准备生成教案");
+        step1.put("status", "completed");
+        step1.put("details", Map.of("title", title, "gradeLevel", gradeLevel));
+        step1.put("timestamp", System.currentTimeMillis());
+        executionSteps.add(step1);
+
+        Map<String, Object> step2 = new HashMap<>();
+        step2.put("stepId", 2);
+        step2.put("stepName", "AI 生成教案");
+        step2.put("description", "调用AI模型生成结构化教案");
+        step2.put("status", "running");
+        step2.put("timestamp", System.currentTimeMillis());
+        executionSteps.add(step2);
+
+        long startTime = System.currentTimeMillis();
+        String prompt = "你是一位经验丰富的中学教师。请根据以下信息生成一份完整的教案。\n" +
+                "教学主题：" + title + "\n" +
+                "目标年级：" + (gradeLevel != null && !gradeLevel.isEmpty() ? gradeLevel : "通用") + "\n" +
+                "内容要点：" + content + "\n\n" +
+                "请严格按照以下JSON格式返回，不要有其他内容：\n" +
+                "{\"objectives\":\"教学目标（2-3条，具体可测量）\"," +
+                "\"keyPoints\":\"重点难点分析\"," +
+                "\"framework\":\"知识讲解框架（分步骤展开，条理清晰）\"," +
+                "\"examples\":\"例题（至少2道，含完整解析过程）\"," +
+                "\"homework\":\"课后作业建议（3-5题，注明难度）\"}";
+
+        String aiResponse = callQwenAPI(prompt);
+        long duration = System.currentTimeMillis() - startTime;
+
+        Map<String, Object> lessonPlan = new HashMap<>();
+        if (aiResponse != null) {
+            try {
+                String cleaned = aiResponse;
+                if (cleaned.contains("```json")) cleaned = cleaned.replaceAll("```json\\s*", "").replaceAll("```\\s*", "");
+                else if (cleaned.contains("```")) cleaned = cleaned.replaceAll("```\\s*", "");
+                cleaned = cleaned.trim();
+                int start = cleaned.indexOf('{');
+                int end = cleaned.lastIndexOf('}');
+                if (start >= 0 && end > start) cleaned = cleaned.substring(start, end + 1);
+                JsonNode node = objectMapper.readTree(cleaned);
+                lessonPlan.put("objectives", node.path("objectives").asText());
+                lessonPlan.put("keyPoints", node.path("keyPoints").asText());
+                lessonPlan.put("framework", node.path("framework").asText());
+                lessonPlan.put("examples", node.path("examples").asText());
+                lessonPlan.put("homework", node.path("homework").asText());
+            } catch (Exception e) {
+                lessonPlan.put("objectives", aiResponse);
+                lessonPlan.put("keyPoints", "");
+                lessonPlan.put("framework", "");
+                lessonPlan.put("examples", "");
+                lessonPlan.put("homework", "");
+            }
+        } else {
+            lessonPlan.put("objectives", "掌握" + title + "的基本概念和方法");
+            lessonPlan.put("keyPoints", title + "的核心知识点");
+            lessonPlan.put("framework", "1. 引入 → 2. 概念讲解 → 3. 例题演示 → 4. 练习巩固");
+            lessonPlan.put("examples", "例1：基础应用题\n例2：综合提高题");
+            lessonPlan.put("homework", "完成教材相关练习题");
+        }
+
+        step2.put("status", "completed");
+        step2.put("duration", duration + "ms");
+        step2.put("details", Map.of("tool", "Qwen AI API", "model", qwenModel));
+
+        Map<String, Object> step3 = new HashMap<>();
+        step3.put("stepId", 3);
+        step3.put("stepName", "保存教案");
+        step3.put("description", "将教案保存到数据库");
+        step3.put("status", "running");
+        step3.put("timestamp", System.currentTimeMillis());
+        executionSteps.add(step3);
+
+        String summaryJson;
+        try {
+            summaryJson = objectMapper.writeValueAsString(lessonPlan);
+        } catch (Exception e) {
+            summaryJson = lessonPlan.toString();
+        }
+
+        KnowledgePoint kp = createKnowledgePoint(userId, title, content, summaryJson, "LESSON_PLAN");
+
+        step3.put("status", "completed");
+        step3.put("details", Map.of("knowledgePointId", kp.getId()));
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("knowledgePointId", kp.getId());
+        result.put("title", title);
+        result.put("gradeLevel", gradeLevel);
+        result.put("lessonPlan", lessonPlan);
+        result.put("executionSteps", executionSteps);
+        result.put("totalDuration", duration + "ms");
+        return result;
+    }
+
     private void notifyAgentCacheInvalidate(Integer userId) {
         try {
             String body = "{\"user_id\":" + userId + "}";
