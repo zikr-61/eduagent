@@ -46,7 +46,7 @@
       <div v-else-if="userType === 'student'">
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-statistic title="总学习时长" :value="totalHours" :precision="1" suffix="小时">
+            <el-statistic title="总学习时长（含本次在线）" :value="totalHoursWithSession" :precision="1" suffix="小时">
               <template #prefix>
                 <el-icon><Clock /></el-icon>
               </template>
@@ -108,7 +108,7 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue';
 import { Clock } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { getTotalDuration, getWeeklyReport, getMonthlyReport, startLearning, endLearning, getAllStudentsStats } from '@/api';
+import { getTotalDuration, getWeeklyReport, getMonthlyReport, getAllStudentsStats } from '@/api';
 
 const userInfo = ref(JSON.parse(localStorage.getItem('userInfo')));
 const userType = ref(localStorage.getItem('userType'));
@@ -120,9 +120,22 @@ const monthlyHours = ref(0);
 const weeklyReport = ref(null);
 const monthlyReport = ref(null);
 const studentsStats = ref([]);
+
+// 当前在线时长（分钟）——与 App.vue 同源，读 loginTime
 const currentSessionTime = ref(0);
 let sessionTimer = null;
-let startTime = null;
+
+const updateSessionTime = () => {
+  const loginTime = localStorage.getItem('loginTime');
+  if (loginTime) {
+    currentSessionTime.value = Math.floor((Date.now() - parseInt(loginTime)) / 60000);
+  }
+};
+
+// 总时长 = DB 记录时长 + 本次在线时长（小时）
+const totalHoursWithSession = computed(() =>
+  Math.round((totalHours.value + currentSessionTime.value / 60) * 10) / 10
+);
 
 const weeklyTableData = computed(() => {
   if (!weeklyReport.value || !weeklyReport.value.dailyStudy) return [];
@@ -175,15 +188,8 @@ const renderStudentChart = () => {
 
 const startSessionTimer = () => {
   if (userType.value === 'student') {
-    startTime = new Date();
-    sessionTimer = setInterval(() => {
-      const now = new Date();
-      const diff = Math.floor((now - startTime) / 60000); // 转换为分钟
-      currentSessionTime.value = diff;
-    }, 60000); // 每分钟更新一次
-    
-    // 调用后端API开始学习记录
-    startLearning(userId.value, 'session', 0);
+    updateSessionTime();
+    sessionTimer = setInterval(updateSessionTime, 60000);
   }
 };
 
@@ -191,11 +197,6 @@ const endSessionTimer = () => {
   if (sessionTimer) {
     clearInterval(sessionTimer);
     sessionTimer = null;
-    
-    // 调用后端API结束学习记录
-    if (startTime) {
-      endLearning(userId.value, 'session', 0, startTime.toISOString());
-    }
   }
 };
 

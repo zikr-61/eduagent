@@ -208,8 +208,8 @@ async function sendMessage() {
   messages.value.push({ role: 'human', content: text });
 
   // 添加 AI 消息占位（等待流式填充）
-  const aiMsg = { role: 'ai', content: '', steps: [], typing: true, duration: '' };
-  messages.value.push(aiMsg);
+  messages.value.push({ role: 'ai', content: '', steps: [], typing: true, duration: '' });
+  const aiMsgIdx = messages.value.length - 1; // 通过索引访问保证 Vue 响应式代理生效
   scrollToBottom();
 
   agentRunning.value = true;
@@ -255,7 +255,7 @@ async function sendMessage() {
 
         try {
           const event = JSON.parse(raw);
-          handleSSEEvent(event, aiMsg, startTime);
+          handleSSEEvent(event, aiMsgIdx, startTime);
         } catch (e) {
           console.warn('SSE parse error:', e);
         }
@@ -265,45 +265,46 @@ async function sendMessage() {
   } catch (err) {
     const isOffline = err.message === 'Network Error' || err.message?.includes('ERR_CONNECTION_REFUSED');
     agentOffline.value = isOffline;
-    aiMsg.content = isOffline
+    messages.value[aiMsgIdx].content = isOffline
       ? '⚠️ 无法连接 Spring Boot（8080）。请确认后端已启动。'
       : `请求失败：${err.message}`;
-    aiMsg.typing = false;
+    messages.value[aiMsgIdx].typing = false;
     if (!isOffline) ElMessage.error('对话请求失败');
   } finally {
     agentRunning.value = false;
-    aiMsg.typing = false;
+    messages.value[aiMsgIdx].typing = false;
     scrollToBottom();
     await loadSessions();
   }
 }
 
-function handleSSEEvent(event, aiMsg, startTime) {
+function handleSSEEvent(event, aiMsgIdx, startTime) {
+  const msg = messages.value[aiMsgIdx]; // 通过响应式数组访问，确保 Vue 能检测到变更
   const type = event.type;
 
   if (type === 'session_id') {
     currentSessionId.value = event.session_id;
   } else if (type === 'status') {
-    aiMsg.typing = true;
+    msg.typing = true;
   } else if (type === 'step_start' || type === 'tool_call') {
     const step = event.step || {};
-    const existing = aiMsg.steps.find(s => s.stepId === step.stepId);
-    if (!existing) aiMsg.steps.push(step);
-    aiMsg.typing = false;
+    const existing = msg.steps.find(s => s.stepId === step.stepId);
+    if (!existing) msg.steps.push(step);
+    msg.typing = false;
   } else if (type === 'tool_result' || type === 'step_done') {
     const step = event.step || {};
-    const idx = aiMsg.steps.findIndex(s => s.stepId === step.stepId);
-    if (idx >= 0) aiMsg.steps[idx] = step;
-    else aiMsg.steps.push(step);
+    const idx = msg.steps.findIndex(s => s.stepId === step.stepId);
+    if (idx >= 0) msg.steps[idx] = step;
+    else msg.steps.push(step);
   } else if (type === 'text_chunk') {
-    aiMsg.content += event.content;
-    aiMsg.typing = false;
+    msg.content += event.content;
+    msg.typing = false;
   } else if (type === 'done') {
-    aiMsg.typing = false;
-    aiMsg.duration = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+    msg.typing = false;
+    msg.duration = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
   } else if (type === 'error') {
-    aiMsg.content = `Agent 错误：${event.message}`;
-    aiMsg.typing = false;
+    msg.content = `Agent 错误：${event.message}`;
+    msg.typing = false;
   }
 }
 

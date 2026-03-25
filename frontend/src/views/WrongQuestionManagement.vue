@@ -53,8 +53,11 @@
         <div v-if="showResult" class="result-msg" :class="redoCorrect ? 'ok' : 'bad'">
           {{ redoCorrect ? '回答正确！可将该题移出错题本。' : '仍不正确，再想想看。' }}
         </div>
-        <div v-if="showResult && !redoCorrect && current.answer" class="ans-hint">
-          正确答案：<strong>{{ current.answer }}</strong>
+        <div v-if="showResult && !redoCorrect && current.answer" style="margin-top:8px;">
+          <el-button v-if="!showAnswer" size="small" type="warning" plain @click="showAnswer = true">查看答案</el-button>
+          <div v-else class="ans-hint">
+            正确答案：<strong>{{ current.answer }}</strong>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -79,6 +82,7 @@ const current = ref(null);
 const redoAnswer = ref('');
 const showResult = ref(false);
 const redoCorrect = ref(false);
+const showAnswer = ref(false);
 
 const resolveUserId = () => {
   try {
@@ -114,6 +118,7 @@ const openRedo = (row) => {
   redoAnswer.value = '';
   showResult.value = false;
   redoCorrect.value = false;
+  showAnswer.value = false;
   redoVisible.value = true;
 };
 
@@ -127,6 +132,7 @@ const checkRedo = () => {
   if (!current.value) return;
   showResult.value = true;
   redoCorrect.value = norm(redoAnswer.value) === norm(current.value.answer);
+  showAnswer.value = false; // 每次重新提交隐藏答案
 };
 
 const removeRow = async (row) => {
