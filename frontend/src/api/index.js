@@ -67,7 +67,13 @@ api.interceptors.response.use(
           window.location.href = '/login';
           break;
         case 403:
-          console.error('拒绝访问');
+          // 403 通常意味着 token 丢失或已过期（Spring Security 有时返回 403 而非 401）
+          console.error('拒绝访问，token 可能已失效，重新登录');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userInfo');
+          localStorage.removeItem('userType');
+          localStorage.removeItem('loginTime');
+          window.location.href = '/login';
           break;
         case 404:
           console.error('请求路径不存在');

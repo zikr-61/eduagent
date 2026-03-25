@@ -24,7 +24,14 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/user/login", "/api/user/register").permitAll()
+                // Agent 代理接口由 Python 侧用 user_id 做业务隔离，Spring 不做 JWT 拦截
+                .requestMatchers("/api/agent/**").permitAll()
                 .anyRequest().authenticated()
+            )
+            // 未认证访问受保护接口时明确返回 401，而非 Spring Security 默认的 403
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) ->
+                        res.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
