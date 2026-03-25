@@ -98,16 +98,21 @@ CREATE TABLE IF NOT EXISTS student_homework (
 );
 
 -- 错题本：知识点生成习题中答错的题目，供学生复习
+-- question_id 不加 ON DELETE CASCADE，保留错题记录供快照降级使用
 CREATE TABLE IF NOT EXISTS error_questions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     question_id INT NOT NULL,
+    -- 快照字段：题目被删除时仍可展示错题内容
+    question_text_snapshot TEXT,
+    options_snapshot TEXT,
+    correct_answer_snapshot VARCHAR(255),
+    knowledge_title_snapshot VARCHAR(255),
     error_time DATETIME NOT NULL,
     error_count INT NOT NULL DEFAULT 1,
     last_error_time DATETIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
     UNIQUE KEY unique_student_question (student_id, question_id)
 );
 
