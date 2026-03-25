@@ -2,13 +2,15 @@ package com.example.eaibackend.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -89,72 +91,93 @@ public class AgentProxyController {
     }
 
     /**
-     * 代理：流式对话（SSE），转发 Python 的 text/event-stream
-     * 使用 Map 接收 JSON 再序列化：避免 @RequestBody String 在部分环境下拿到空串，导致 Python 422
+     * 代理：流式对话（SSE），转发 Python 的 text/event-stream。
+     *
+     * 根本原因分析：Python/uvicorn 使用 HTTP/1.1 keep-alive，发完最后一个 SSE 事件后
+     * 不立即关闭 TCP 连接，导致 InputStream.read() 阻塞直到超时，从而抛出异常，
+     * Spring 来不及发送 chunked 结束标记（0\r\n\r\n），浏览器报 ERR_INCOMPLETE_CHUNKED_ENCODING。
+     *
+     * 修复方案：
+     * 1. 直接写入 HttpServletResponse.getOutputStream()，由 Tomcat 负责 HTTP 生命周期
+     * 2. 逐行读取 SSE，每个完整事件（空行分隔）后立即 flush
+     * 3. 检测到 "type":"done" 或 "type":"error" 后主动退出循环，不依赖 Python 关闭连接
      */
-    @PostMapping(value = "/proxy/chat/stream", consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public ResponseEntity<StreamingResponseBody> proxyChatStream(@RequestBody Map<String, Object> payload) {
-        StreamingResponseBody stream = outputStream -> {
-            try {
-                String rawBody = objectMapper.writeValueAsString(payload);
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(PYTHON_BASE + "/agent/chat/stream"))
-                        .version(HttpClient.Version.HTTP_1_1)
-                        .timeout(Duration.ofMinutes(8))
-                        .header("Content-Type", "application/json; charset=UTF-8")
-                        .POST(HttpRequest.BodyPublishers.ofString(rawBody, StandardCharsets.UTF_8))
-                        .build();
-                HttpResponse<InputStream> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofInputStream());
-                if (resp.statusCode() != 200) {
-                    String detail = "";
-                    try (InputStream errIn = resp.body()) {
-                        byte[] bytes = errIn.readAllBytes();
-                        if (bytes.length > 0) {
-                            detail = new String(bytes, StandardCharsets.UTF_8).replace("\n", " ").trim();
-                            if (detail.length() > 300) {
-                                detail = detail.substring(0, 300) + "...";
-                            }
+    @PostMapping(value = "/proxy/chat/stream", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public void proxyChatStream(@RequestBody Map<String, Object> payload,
+                                HttpServletResponse response) {
+        response.setContentType("text/event-stream;charset=UTF-8");
+        response.setCharacterEncoding("UTF-8");
+        response.addHeader("Cache-Control", "no-cache");
+        response.addHeader("X-Accel-Buffering", "no");
+        response.addHeader("Connection", "keep-alive");
+
+        try {
+            String rawBody = objectMapper.writeValueAsString(payload);
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(PYTHON_BASE + "/agent/chat/stream"))
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .timeout(Duration.ofMinutes(8))
+                    .header("Content-Type", "application/json; charset=UTF-8")
+                    .POST(HttpRequest.BodyPublishers.ofString(rawBody, StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<InputStream> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofInputStream());
+
+            OutputStream out = response.getOutputStream();
+
+            if (resp.statusCode() != 200) {
+                String detail = "";
+                try (InputStream errIn = resp.body()) {
+                    byte[] bytes = errIn.readAllBytes();
+                    if (bytes.length > 0) {
+                        detail = new String(bytes, StandardCharsets.UTF_8).replace("\n", " ").trim();
+                        if (detail.length() > 300) detail = detail.substring(0, 300) + "...";
+                    }
+                }
+                String msg = "Agent 返回 HTTP " + resp.statusCode()
+                        + (detail.isBlank() ? "" : "，详情: " + detail);
+                String json = objectMapper.writeValueAsString(Map.of("type", "error", "message", msg));
+                out.write(("data: " + json + "\n\n").getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                return;
+            }
+
+            // 逐行读取 SSE；检测到 done/error 后主动退出，不等 Python 关闭连接
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(resp.body(), StandardCharsets.UTF_8))) {
+                String line;
+                boolean finished = false;
+                while (!finished && (line = reader.readLine()) != null) {
+                    out.write((line + "\n").getBytes(StandardCharsets.UTF_8));
+                    if (line.isEmpty()) {
+                        // 空行 = SSE 事件边界，立即 flush 让浏览器能立刻收到
+                        out.flush();
+                    } else if (line.startsWith("data:")) {
+                        // 检测流结束标志，主动停止而不依赖 TCP 关闭
+                        String data = line.length() > 5 ? line.substring(5).trim() : "";
+                        if (data.contains("\"type\":\"done\"") || data.contains("\"type\":\"error\"")) {
+                            finished = true;
                         }
                     }
-                    String msg = "Agent 返回 HTTP " + resp.statusCode()
-                            + (detail.isBlank() ? "" : ("，详情: " + detail));
-                    String json = objectMapper.writeValueAsString(Map.of(
-                            "type", "error",
-                            "message", msg
-                    ));
-                    outputStream.write(("data: " + json + "\n\n").getBytes(StandardCharsets.UTF_8));
-                    outputStream.flush();
-                    return;
                 }
-                // 逐块读取并立即 flush，确保每个 SSE event 及时送达
-                // 避免 transferTo 在流结束时未发送 chunked 结束标记导致 ERR_INCOMPLETE_CHUNKED_ENCODING
-                try (InputStream in = resp.body()) {
-                    byte[] buf = new byte[4096];
-                    int n;
-                    while ((n = in.read(buf)) != -1) {
-                        outputStream.write(buf, 0, n);
-                        outputStream.flush();
-                    }
-                } finally {
-                    try { outputStream.flush(); } catch (Exception ignored) {}
-                }
-            } catch (Exception e) {
-                try {
-                    String msg = e.getMessage() == null ? "连接 Agent 失败" : e.getMessage().replace("\"", "'");
-                    String json = "{\"type\":\"error\",\"message\":\"" + msg
-                            + " — 请在 IDEA 运行 agent_service/main.py 或双击 start.bat\"}";
-                    outputStream.write(("data: " + json + "\n\n").getBytes(StandardCharsets.UTF_8));
-                    outputStream.flush();
-                } catch (Exception ignored) {
-                }
+                // 确保最后一个事件有完整的 \n\n 结尾
+                out.write("\n".getBytes(StandardCharsets.UTF_8));
             }
-        };
-        return ResponseEntity.ok()
-                .header("Cache-Control", "no-cache")
-                .header("X-Accel-Buffering", "no")
-                .contentType(MediaType.TEXT_EVENT_STREAM)
-                .body(stream);
+            out.flush();
+
+        } catch (Exception e) {
+            try {
+                String msg = e.getMessage() == null ? "连接 Agent 失败"
+                        : e.getMessage().replace("\"", "'");
+                if (msg.length() > 200) msg = msg.substring(0, 200);
+                String json = "{\"type\":\"error\",\"message\":\"" + msg
+                        + " — 请在 IDEA 运行 agent_service/main.py 或双击 start.bat\"}";
+                response.getOutputStream().write(("data: " + json + "\n\n")
+                        .getBytes(StandardCharsets.UTF_8));
+                response.getOutputStream().flush();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     /**

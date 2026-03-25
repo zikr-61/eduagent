@@ -249,8 +249,9 @@ async function sendMessage() {
       buffer = lines.pop();
 
       for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const raw = line.slice(6).trim();
+        if (!line.startsWith('data:')) continue;
+        // 兼容 "data: " 和 "data:" 两种格式
+        const raw = line.startsWith('data: ') ? line.slice(6).trim() : line.slice(5).trim();
         if (!raw) continue;
 
         try {
