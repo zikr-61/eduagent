@@ -89,7 +89,7 @@
     </el-dialog>
 
     <!-- ══ 学生端：知识点总结 + 习题 ══ -->
-    <el-card v-else class="box-card">
+    <el-card v-if="userType !== 'teacher'" class="box-card">
       <template #header>
         <div class="card-header"><span>生成知识点总结</span></div>
       </template>
