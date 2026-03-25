@@ -148,11 +148,11 @@ export const createKnowledgePoint = (userId, title, content, summary, fileName) 
 };
 
 export const generateSummaryAndQuestions = (userId, title, content, fileName) => {
-  return api.post('/knowledge/generate', { userId, title, content, fileName });
+  return api.post('/knowledge/generate', { userId, title, content, fileName }, { timeout: 120000 });
 };
 
 export const generateLessonPlan = (userId, title, gradeLevel, content) => {
-  return api.post('/knowledge/generate-plan', { userId, title, gradeLevel, content });
+  return api.post('/knowledge/generate-plan', { userId, title, gradeLevel, content }, { timeout: 120000 });
 };
 
 export const getQuestions = (knowledgePointId) => {
