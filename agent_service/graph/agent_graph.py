@@ -16,7 +16,14 @@ from tools.error_analysis import ErrorAnalysisTool
 from tools.question_generator import QuestionGeneratorTool
 from tools.study_plan import StudyPlanTool
 from tools.teacher_analysis import TeacherAnalysisTool
+from mcp.client import MCPClient
+from skills.base import skill_registry
 from config import QWEN_API_KEY, QWEN_BASE_URL, QWEN_CHAT_MODEL
+
+# 导入技能模块，确保技能被注册
+import skills.study_progress
+import skills.knowledge_mastery
+import skills.homework_analysis
 
 STUDENT_SYSTEM_PROMPT = """你是一位专注、耐心的AI学习助手，服务于当前学生用户。
 
@@ -25,8 +32,11 @@ STUDENT_SYSTEM_PROMPT = """你是一位专注、耐心的AI学习助手，服务
 - analyze_my_errors：分析该学生的错题本与薄弱点。无参数。
 - generate_targeted_questions：根据知识片段与薄弱方向出题。参数：context、focus、count、difficulty
 - generate_study_plan：根据该学生的学习/作业/错题数据给个性化建议。无参数。
+- study_progress_analysis：分析学生的学习进度和学习时长。参数：user_id（学生ID）、days（可选，统计天数，默认7）
+- knowledge_mastery_analysis：评估学生对知识点的掌握程度。参数：student_id（学生ID）
+- homework_completion_analysis：分析学生的作业完成情况。参数：student_id（学生ID）
 
-规则简要：问知识先 knowledge_search；问薄弱/复习先 analyze_my_errors；要计划用 generate_study_plan；出题先检索再 generate_targeted_questions。
+规则简要：问知识先 knowledge_search；问薄弱/复习先 analyze_my_errors；要计划用 generate_study_plan；出题先检索再 generate_targeted_questions；分析学习进度用 study_progress_analysis；评估知识点掌握度用 knowledge_mastery_analysis；分析作业完成情况用 homework_completion_analysis。
 回答要亲切、具体。"""
 
 TEACHER_SYSTEM_PROMPT = """你是 AI 教学助手，服务于当前教师用户。
@@ -36,6 +46,9 @@ TEACHER_SYSTEM_PROMPT = """你是 AI 教学助手，服务于当前教师用户�
 - knowledge_search：检索该教师自己的知识点材料。参数：query、top_k
 - generate_targeted_questions：生成练习题。参数：context、focus、count、difficulty
 - analyze_student_errors：查看某学生错题。参数：student_id（整数）
+- study_progress_analysis：分析学生的学习进度和学习时长。参数：user_id（学生ID）、days（可选，统计天数，默认7）
+- knowledge_mastery_analysis：评估学生对知识点的掌握程度。参数：student_id（学生ID）
+- homework_completion_analysis：分析学生的作业完成情况。参数：student_id（学生ID）
 
 重要约束（防止编造数据）：
 1) 你在最终回答中出现的学生姓名/学生ID/具体数值/名单，必须严格来自工具输出；
@@ -71,7 +84,10 @@ def _student_tools(uid: int):
         """根据知识点文本 context 与考察重点 focus 生成选择题。count 题目数量；difficulty：easy/medium/hard。"""
         return gen._run(context, focus, count, difficulty)
 
-    return [knowledge_search, analyze_my_errors, generate_study_plan, generate_targeted_questions]
+    # 获取技能工具
+    skill_tools = skill_registry.tools()
+    
+    return [knowledge_search, analyze_my_errors, generate_study_plan, generate_targeted_questions] + skill_tools
 
 
 def _teacher_tools(tid: int):
@@ -99,12 +115,15 @@ def _teacher_tools(tid: int):
         """根据材料 context 与重点 focus 生成选择题。"""
         return gen._run(context, focus, count, difficulty)
 
+    # 获取技能工具
+    skill_tools = skill_registry.tools()
+
     return [
         teacher_class_analysis,
         knowledge_search,
         analyze_student_errors,
         generate_targeted_questions,
-    ]
+    ] + skill_tools
 
 
 def build_agent(user_type: str, user_id: int):

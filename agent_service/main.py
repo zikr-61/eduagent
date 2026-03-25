@@ -293,6 +293,9 @@ _TOOL_NAMES = {
     "generate_targeted_questions": "针对性出题",
     "generate_study_plan": "学习计划生成",
     "teacher_class_analysis": "班级学情分析",
+    "study_progress_analysis": "学习进度分析",
+    "knowledge_mastery_analysis": "知识点掌握度评估",
+    "homework_completion_analysis": "作业完成情况分析",
 }
 
 _TOOL_DESCS = {
@@ -303,6 +306,9 @@ _TOOL_DESCS = {
     "generate_targeted_questions": "正在根据薄弱点生成针对性练习题...",
     "generate_study_plan": "正在综合你的学习数据，生成个性化建议...",
     "teacher_class_analysis": "正在分析全班学生学习数据...",
+    "study_progress_analysis": "正在分析学生的学习进度和学习时长...",
+    "knowledge_mastery_analysis": "正在评估学生对知识点的掌握程度...",
+    "homework_completion_analysis": "正在分析学生的作业完成情况...",
 }
 
 
