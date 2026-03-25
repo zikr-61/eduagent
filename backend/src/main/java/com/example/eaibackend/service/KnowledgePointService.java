@@ -213,16 +213,21 @@ public class KnowledgePointService {
         executionSteps.add(step2);
 
         long startTime = System.currentTimeMillis();
-        String prompt = "你是一位经验丰富的中学教师。请根据以下信息生成一份完整的教案。\n" +
+        String grade = (gradeLevel != null && !gradeLevel.isEmpty()) ? gradeLevel : "通用";
+        String prompt = "你是一位有15年教学经验的中学" + grade + "教师，精通教案设计。" +
+                "请根据以下信息生成一份内容翔实、可直接用于课堂教学的完整教案。\n\n" +
                 "教学主题：" + title + "\n" +
-                "目标年级：" + (gradeLevel != null && !gradeLevel.isEmpty() ? gradeLevel : "通用") + "\n" +
+                "目标年级：" + grade + "\n" +
                 "内容要点：" + content + "\n\n" +
-                "请严格按照以下JSON格式返回，不要有其他内容：\n" +
-                "{\"objectives\":\"教学目标（2-3条，具体可测量）\"," +
-                "\"keyPoints\":\"重点难点分析\"," +
-                "\"framework\":\"知识讲解框架（分步骤展开，条理清晰）\"," +
-                "\"examples\":\"例题（至少2道，含完整解析过程）\"," +
-                "\"homework\":\"课后作业建议（3-5题，注明难度）\"}";
+                "要求：每个字段都必须内容详细完整，不得使用省略号或\"...\"代替实际内容，总字数不少于800字。\n" +
+                "请严格按照以下JSON格式返回，不要有其他内容（字段值中换行用\\n表示）：\n" +
+                "{" +
+                "\"objectives\":\"【教学目标】\\n1.知识与技能目标：...（具体描述学生学完后能掌握什么知识、形成什么技能）\\n2.过程与方法目标：...（描述通过什么学习过程培养什么能力）\\n3.情感态度目标：...（描述培养什么情感或学科素养）\"," +
+                "\"keyPoints\":\"【重点难点】\\n教学重点：...（列出2-3个核心知识点，说明重要性）\\n教学难点：...（列出1-2个易混淆或理解困难的点，并说明突破策略）\"," +
+                "\"framework\":\"【知识讲解框架】\\n1.课堂导入（5分钟）：...（具体描述用什么情境或问题引入，激发学生兴趣）\\n2.新知讲解（15分钟）：...（详细说明概念定义、公式推导或原理分析的讲解步骤）\\n3.例题讲解（10分钟）：...（说明例题类型和讲解思路）\\n4.学生练习（10分钟）：...（说明练习内容和组织方式）\\n5.总结归纳（5分钟）：...（说明如何帮学生构建知识体系）\"," +
+                "\"examples\":\"【例题（含解析）】\\n例题一（基础题）：\\n题目：...（完整题目）\\n解题思路：...（分析题目条件）\\n解题步骤：...（逐步写出完整解题过程）\\n答案：...\\n\\n例题二（提高题）：\\n题目：...（完整题目）\\n解题思路：...\\n解题步骤：...（逐步写出完整解题过程）\\n答案：...\\n常见错误提示：...\"," +
+                "\"homework\":\"【课后作业建议】\\n（★基础）第1题：...（完整题目内容）\\n（★基础）第2题：...\\n（★★提高）第3题：...（完整题目内容）\\n（★★提高）第4题：...\\n（★★★拓展）第5题：...（完整题目内容）\\n作业说明：...（说明完成要求和评分标准）\"" +
+                "}";
 
         String aiResponse = callQwenAPI(prompt);
         long duration = System.currentTimeMillis() - startTime;
@@ -365,7 +370,7 @@ public class KnowledgePointService {
             requestBodyMap.put("messages", messages);
             
             requestBodyMap.put("temperature", 0.7);
-            requestBodyMap.put("max_tokens", 2000);
+            requestBodyMap.put("max_tokens", 4000);
 
             String requestBody = objectMapper.writeValueAsString(requestBodyMap);
 

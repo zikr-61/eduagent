@@ -56,6 +56,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Clock, Document, List, CircleClose, ChatDotRound } from '@element-plus/icons-vue';
+import { sessionMinutes, refreshSessionMinutes } from '@/utils/sessionTimer';
 
 const router = useRouter();
 const route = useRoute();
@@ -64,20 +65,12 @@ const username = ref('User');
 const userType = ref('');
 const activeMenu = ref('/study-stats');
 
-// ── 在线计时器（纯展示，不写数据库）──
-const sessionMinutes = ref(0);
+// ── 在线计时器（全局共享，每30秒更新一次）──
 let timerInterval = null;
 
-const updateSessionTime = () => {
-  const loginTime = localStorage.getItem('loginTime');
-  if (loginTime) {
-    sessionMinutes.value = Math.floor((Date.now() - parseInt(loginTime)) / 60000);
-  }
-};
-
 const startTimer = () => {
-  updateSessionTime();
-  timerInterval = setInterval(updateSessionTime, 60000);
+  refreshSessionMinutes(); // 立即计算
+  timerInterval = setInterval(refreshSessionMinutes, 30000); // 每30秒更新
 };
 
 const stopTimer = () => {

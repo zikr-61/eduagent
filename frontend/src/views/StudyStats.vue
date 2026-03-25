@@ -36,9 +36,24 @@
 
         <el-card shadow="hover">
           <template #header>
-            <span>学生学习时长对比</span>
+            <span>学生学习时长对比（总时长）</span>
           </template>
-          <div id="studentChart" style="width: 100%; height: 400px;"></div>
+          <div v-if="chartData.length === 0" style="text-align:center;color:#c0c4cc;padding:40px;">暂无学生数据</div>
+          <div v-else class="bar-chart">
+            <div v-for="item in chartData" :key="item.name" class="bar-row">
+              <span class="bar-label">{{ item.name }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" :style="{ width: item.pct + '%' }"></div>
+              </div>
+              <span class="bar-value">{{ item.totalHours }}h</span>
+            </div>
+            <div class="bar-legend">
+              <span>本周：</span>
+              <span v-for="item in chartData" :key="'w'+item.name" class="legend-item">
+                {{ item.name }} {{ item.weeklyHours }}h
+              </span>
+            </div>
+          </div>
         </el-card>
       </div>
 
@@ -109,6 +124,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue';
 import { Clock } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { getTotalDuration, getWeeklyReport, getMonthlyReport, getAllStudentsStats } from '@/api';
+import { sessionMinutes } from '@/utils/sessionTimer';
 
 const userInfo = ref(JSON.parse(localStorage.getItem('userInfo')));
 const userType = ref(localStorage.getItem('userType'));
@@ -121,20 +137,12 @@ const weeklyReport = ref(null);
 const monthlyReport = ref(null);
 const studentsStats = ref([]);
 
-// 当前在线时长（分钟）——与 App.vue 同源，读 loginTime
-const currentSessionTime = ref(0);
-let sessionTimer = null;
-
-const updateSessionTime = () => {
-  const loginTime = localStorage.getItem('loginTime');
-  if (loginTime) {
-    currentSessionTime.value = Math.floor((Date.now() - parseInt(loginTime)) / 60000);
-  }
-};
+// 当前在线时长：直接引用 App.vue 驱动的全局共享 ref，保证完全同步
+const currentSessionTime = computed(() => sessionMinutes.value);
 
 // 总时长 = DB 记录时长 + 本次在线时长（小时）
 const totalHoursWithSession = computed(() =>
-  Math.round((totalHours.value + currentSessionTime.value / 60) * 10) / 10
+  Math.round((totalHours.value + sessionMinutes.value / 60) * 10) / 10
 );
 
 const weeklyTableData = computed(() => {
@@ -180,25 +188,18 @@ const loadData = async () => {
   }
 };
 
-const renderStudentChart = () => {
-  // 这里可以使用ECharts等图表库来渲染学生学习时长对比图表
-  // 暂时使用模拟实现
-  console.log('渲染学生学习时长对比图表');
-};
-
-const startSessionTimer = () => {
-  if (userType.value === 'student') {
-    updateSessionTime();
-    sessionTimer = setInterval(updateSessionTime, 60000);
-  }
-};
-
-const endSessionTimer = () => {
-  if (sessionTimer) {
-    clearInterval(sessionTimer);
-    sessionTimer = null;
-  }
-};
+// 图表数据：从 studentsStats 派生，用于 CSS 柱状图
+const chartData = computed(() => {
+  const data = studentsStats.value;
+  if (!data.length) return [];
+  const max = Math.max(...data.map(s => Number(s.totalHours) || 0), 1);
+  return data.map(s => ({
+    name: s.name || s.username || '未知',
+    totalHours: Number(s.totalHours) || 0,
+    weeklyHours: Number(s.weeklyHours) || 0,
+    pct: Math.round(((Number(s.totalHours) || 0) / max) * 100),
+  }));
+});
 
 const exportWeeklyReport = () => {
   if (!weeklyReport.value) return;
@@ -225,11 +226,6 @@ const downloadFile = (filename, content) => {
 
 onMounted(() => {
   loadData();
-  startSessionTimer();
-});
-
-onUnmounted(() => {
-  endSessionTimer();
 });
 </script>
 
@@ -247,4 +243,31 @@ onUnmounted(() => {
 .el-row {
   margin-bottom: 20px;
 }
+
+/* ── 柱状图 ── */
+.bar-chart { padding: 12px 0; }
+.bar-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+.bar-label { width: 72px; font-size: 13px; color: #606266; text-align: right; flex-shrink: 0; }
+.bar-track {
+  flex: 1;
+  height: 22px;
+  background: #f0f2f5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #409eff, #67c23a);
+  border-radius: 4px;
+  transition: width 0.6s ease;
+  min-width: 4px;
+}
+.bar-value { width: 40px; font-size: 13px; color: #303133; font-weight: 600; flex-shrink: 0; }
+.bar-legend { margin-top: 16px; font-size: 12px; color: #909399; display: flex; flex-wrap: wrap; gap: 12px; }
+.legend-item { background: #f5f7fa; padding: 2px 8px; border-radius: 10px; }
 </style>

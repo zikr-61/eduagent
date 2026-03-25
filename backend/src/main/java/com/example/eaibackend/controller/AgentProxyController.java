@@ -127,10 +127,18 @@ public class AgentProxyController {
                     outputStream.flush();
                     return;
                 }
+                // 逐块读取并立即 flush，确保每个 SSE event 及时送达
+                // 避免 transferTo 在流结束时未发送 chunked 结束标记导致 ERR_INCOMPLETE_CHUNKED_ENCODING
                 try (InputStream in = resp.body()) {
-                    in.transferTo(outputStream);
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while ((n = in.read(buf)) != -1) {
+                        outputStream.write(buf, 0, n);
+                        outputStream.flush();
+                    }
+                } finally {
+                    try { outputStream.flush(); } catch (Exception ignored) {}
                 }
-                outputStream.flush();
             } catch (Exception e) {
                 try {
                     String msg = e.getMessage() == null ? "连接 Agent 失败" : e.getMessage().replace("\"", "'");

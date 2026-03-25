@@ -16,8 +16,21 @@
               <el-input v-model="planForm.gradeLevel" placeholder="例：高一、初三" />
             </el-form-item>
             <el-form-item label="内容要点">
-              <el-input v-model="planForm.content" type="textarea" :rows="6"
-                placeholder="请输入本节课的主要内容、知识点或教学要求..." />
+              <div style="width:100%">
+                <el-input v-model="planForm.content" type="textarea" :rows="8"
+                  placeholder="请输入本节课的主要内容、知识点和教学要求...内容越详细，生成的教案越完整。也可上传课本TXT文件自动填充。" />
+                <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+                  <el-upload
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    accept=".txt"
+                    :on-change="handlePlanFileChange"
+                  >
+                    <el-button size="small" type="info" plain>📄 上传课本文件（TXT）</el-button>
+                  </el-upload>
+                  <span style="font-size:12px;color:#909399">上传 .txt 文件可自动填入内容要点</span>
+                </div>
+              </div>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="loading" @click="generatePlan">生成教案</el-button>
@@ -229,6 +242,20 @@ const resolveUserId = () => {
 };
 
 // ── 教师端方法 ──
+const handlePlanFileChange = (file) => {
+  const ext = (file.name || '').split('.').pop().toLowerCase();
+  if (ext !== 'txt') {
+    ElMessage.warning('仅支持 .txt 文件，请将课本内容另存为 TXT 格式');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    planForm.value.content = e.target.result;
+    ElMessage.success(`已加载文件：${file.name}（${planForm.value.content.length} 字）`);
+  };
+  reader.readAsText(file.raw, 'utf-8');
+};
+
 const generatePlan = async () => {
   if (!planForm.value.title || !planForm.value.content) {
     ElMessage.warning('请填写教学主题和内容要点');
