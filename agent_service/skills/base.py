@@ -43,15 +43,20 @@ class SkillRegistry:
     
     def tools(self) -> List[BaseTool]:
         """将技能转换为 LangChain 工具"""
-        from langchain_core.tools import tool
+        from langchain_core.tools import BaseTool, Tool
         tools = []
         
         for skill_name, skill in self.skills.items():
-            @tool(name=skill_name, description=skill.description)
-            def create_tool(**kwargs):
+            def create_tool_func(**kwargs):
                 nonlocal skill
                 return skill.run(**kwargs)
-            tools.append(create_tool)
+            # 使用Tool类直接创建，而不是装饰器
+            tool_instance = Tool(
+                name=skill_name,
+                func=create_tool_func,
+                description=skill.description
+            )
+            tools.append(tool_instance)
         
         return tools
 

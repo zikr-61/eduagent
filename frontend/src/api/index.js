@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 /** 与 Spring Boot 一致，供 fetch 流式接口等使用 */
-export const API_BASE = 'http://localhost:8080/api';
+//export const API_BASE = 'http://localhost:8080/api';
+export const API_BASE = 'http://101.201.247.122:8080/api';
 
 const api = axios.create({
   baseURL: API_BASE,
